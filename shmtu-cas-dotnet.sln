@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "shmtu-cas-dotnet", "shmtu-cas-dotnet\shmtu-cas-dotnet.csproj", "{A16B0A7B-24D0-43AE-9AA6-230A9EB3BD70}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "shmtu-cas-dotnet-demo", "shmtu-cas-dotnet-demo\shmtu-cas-dotnet-demo.csproj", "{DDB55F93-7754-443C-A556-023010CDDD74}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A16B0A7B-24D0-43AE-9AA6-230A9EB3BD70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A16B0A7B-24D0-43AE-9AA6-230A9EB3BD70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A16B0A7B-24D0-43AE-9AA6-230A9EB3BD70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A16B0A7B-24D0-43AE-9AA6-230A9EB3BD70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDB55F93-7754-443C-A556-023010CDDD74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDB55F93-7754-443C-A556-023010CDDD74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDB55F93-7754-443C-A556-023010CDDD74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDB55F93-7754-443C-A556-023010CDDD74}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
