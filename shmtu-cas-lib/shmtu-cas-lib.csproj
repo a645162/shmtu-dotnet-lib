@@ -1,15 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
-        <RootNamespace>shmtu.cas.demo</RootNamespace>
+        <RootNamespace>shmtu.cas</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\shmtu-cas-lib\shmtu-cas-lib.csproj" />
+      <Compile Remove="Shmtu\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="Shmtu\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Shmtu\**" />
     </ItemGroup>
 
 </Project>
