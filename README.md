@@ -69,28 +69,33 @@ RestSharp开始于2009年，Flurl.Http开始于2014年。
 
 ### 客户端
 
-桌面版客户端：
-[a645162/shmtu-terminal-desktop](https://github.com/a645162/shmtu-terminal-desktop)
+* 桌面版客户端
+  [a645162/shmtu-terminal-desktop](https://github.com/a645162/shmtu-terminal-desktop)
 
-[a645162/shmtu-cas-dotnet](https://github.com/a645162/shmtu-cas-dotnet)
-这是桌面版客户端的基础库。
+* 基础库
+  [a645162/shmtu-cas-dotnet](https://github.com/a645162/shmtu-cas-dotnet)
+  这是桌面版客户端的基础库。
+
+* Android客户端(Google Play)
+  推荐前往Google Play商店下载App体验验证码识别。
+  [Play商店](https://play.google.com/store/apps/details?id=com.khm.shmtu.cas.ocr.demo)
 
 ### 服务器部署模型
 
 验证码OCR识别系列项目今后将只会维护推理服务器(shmtu-cas-ocr-server)这一个项目。
 
-[https://github.com/a645162/shmtu-cas-ocr-server](https://github.com/a645162/shmtu-cas-ocr-server)
+[a645162/shmtu-cas-ocr-server](https://github.com/a645162/shmtu-cas-ocr-server)
 
 注：这个项目为王老师的研究生课程《机器视觉》的课程设计项目，**仅用作学习用途**！！！
 
 ### 统一认证登录流程(数字平台+微信平台)
 
 * Kotlin版(方便移植Android)
-  [https://github.com/a645162/shmtu-cas-kotlin](https://github.com/a645162/shmtu-cas-kotlin)
+  [a645162/shmtu-cas-kotlin](https://github.com/a645162/shmtu-cas-kotlin)
 * Go版(为Wails桌面客户端做准备)
-  [https://github.com/a645162/shmtu-cas-go](https://github.com/a645162/shmtu-cas-go)
+  [a645162/shmtu-cas-go](https://github.com/a645162/shmtu-cas-go)
 * .Net Core版(为AvaloniaUI桌面客户端做准备)
-  [https://github.com/a645162/shmtu-cas-dotnet](https://github.com/a645162/shmtu-cas-dotnet)
+  [a645162/shmtu-cas-dotnet](https://github.com/a645162/shmtu-cas-dotnet)
 * Rust版(未来想做Tauri桌面客户端可能会移植)
   ps.功能其实和Golang版本没啥区别，甚至可能实现地更费劲，Golang的移植已经让我比较抓狂了，虽然Rust我也是会的，但是或许不会做。。。
 
@@ -102,14 +107,14 @@ RestSharp开始于2009年，Flurl.Http开始于2014年。
 
 使用PyTorch以及经典网络ResNet
 
-[https://github.com/a645162/shmtu-cas-ocr-model](https://github.com/a645162/shmtu-cas-ocr-model)
+[a645162/shmtu-cas-ocr-model](https://github.com/a645162/shmtu-cas-ocr-model)
 
 **人工标注的数据集(2选1下载)**
 
 * Hugging Face
-  https://huggingface.co/datasets/a645162/shmtu_cas_validate_code
+  [a645162/shmtu_cas_validate_code](https://huggingface.co/datasets/a645162/shmtu_cas_validate_code)
 * Gitee AI(国内较快)
-  https://ai.gitee.com/datasets/a645162/shmtu_cas_validate_code
+  [a645162/shmtu_cas_validate_code](https://ai.gitee.com/datasets/a645162/shmtu_cas_validate_code)
 
 训练代码中包含爬虫代码，以及自动测试识别结果代码。
 您可以对其修改，对测试通过的图片进行标注，这样可以获得准确的标注。
@@ -119,11 +124,13 @@ RestSharp开始于2009年，Flurl.Http开始于2014年。
 ### 模型本地部署
 
 * Windows客户端(包括VC Win32 GUI以及C# WPF)
-  [https://github.com/a645162/shmtu-cas-ocr-demo-windows](https://github.com/a645162/shmtu-cas-ocr-demo-windows)
+  [a645162/shmtu-cas-ocr-demo-windows](https://github.com/a645162/shmtu-cas-ocr-demo-windows)
 * Qt客户端(支持Windows/macOS/Linux)
-  [https://github.com/a645162/shmtu-cas-ocr-demo-qt](https://github.com/a645162/shmtu-cas-ocr-demo-qt)
+  [a645162/shmtu-cas-ocr-demo-qt](https://github.com/a645162/shmtu-cas-ocr-demo-qt)
 * Android客户端
-  [https://github.com/a645162/shmtu-cas-demo-android](https://github.com/a645162/shmtu-cas-demo-android)
+  [a645162/shmtu-cas-demo-android](https://github.com/a645162/shmtu-cas-demo-android)
+* Android客户端(Google Play)
+  [Play商店](https://play.google.com/store/apps/details?id=com.khm.shmtu.cas.ocr.demo)
 
 注：这3个项目为王老师的研究生课程《机器视觉》的课程设计项目，**仅用作学习用途**！！！
 
@@ -131,14 +138,14 @@ RestSharp开始于2009年，Flurl.Http开始于2014年。
 
 Python+Selenium4自动化测试数字海大平台登录流程
 
-[https://github.com/a645162/Digital-SHMTU-Tools](https://github.com/a645162/Digital-SHMTU-Tools)
+[a645162/Digital-SHMTU-Tools](https://github.com/a645162/Digital-SHMTU-Tools)
 
 注：本项目为付老师的研究生课程《Python程序设计与开发》的课程设计项目，**仅用作学习用途**！！！
 
 ### 废弃的项目
 
 * Go Wails版(停止开发)
-  [https://github.com/a645162/SHMTU-Terminal-Wails](https://github.com/a645162/SHMTU-Terminal-Wails)
+  [a645162/SHMTU-Terminal-Wails](https://github.com/a645162/SHMTU-Terminal-Wails)
 * Rust Tauri版(不折腾了~)
 
 这两个都是编译型语言做后端+调用本地浏览器的方案，由于数据传递较为复杂，软件架构复杂，因此不再开发。
