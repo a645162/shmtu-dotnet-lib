@@ -14,6 +14,7 @@ var password = Environment.GetEnvironmentVariable("SHMTU_PASSWORD") ?? "";
 Console.WriteLine($"User ID: {userId} Password: {password}");
 
 // 测试本地TCP服务器OCR
-// await Captcha.TestLocalTcpServerOcr("127.0.0.1", 21601);
+// await CaptchaDemo.TestLocalTcpServerOcr("127.0.0.1", 21601);
+// await CaptchaDemo.TestGetImageAndCookie();
 
 await BillDemo.TestBill(userId, password);

@@ -17,6 +17,7 @@ namespace shmtu.cas.auth.common
             {
                 var response = await url
                     .WithCookie("Cookie", cookie)
+                    .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
                     .SendAsync(HttpMethod.Get);
 
@@ -59,6 +60,7 @@ namespace shmtu.cas.auth.common
             try
             {
                 var response = await url
+                    .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
                     .WithHeaders(new
                     {
@@ -114,7 +116,7 @@ namespace shmtu.cas.auth.common
                     Console.WriteLine("验证码错误");
                     return ((int)CasAuthStatus.ValidateCodeError, htmlCode, "");
                 }
-                    
+
                 return (response.StatusCode, htmlCode, errorText);
             }
             catch (Exception ex)
@@ -131,7 +133,10 @@ namespace shmtu.cas.auth.common
             try
             {
                 var response = await url
-                    .WithCookie("Cookie", cookie).GetAsync();
+                    .WithAutoRedirect(false)
+                    .AllowHttpStatus([302])
+                    .WithCookie("Cookie", cookie)
+                    .GetAsync();
 
                 var responseCode = (HttpStatusCode)response.StatusCode;
 

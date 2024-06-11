@@ -48,6 +48,12 @@ https://www.libhunt.com/compare-Flurl-vs-RestSharp
 
 ## 使用方法
 
+本地运行`shmtu-cas-ocr-server`，然后再运行本项目。
+
+您可以前往
+[GitHub Release](https://github.com/a645162/shmtu-cas-ocr-server/releases)
+下载`shmtu-cas-ocr-server`。
+
 ## 技术栈
 
 - .Net Core 8
@@ -94,7 +100,10 @@ https://www.libhunt.com/compare-Flurl-vs-RestSharp
 
 [a645162/shmtu-cas-ocr-server](https://github.com/a645162/shmtu-cas-ocr-server)
 
-注：这个项目为王老师的研究生课程《机器视觉》的课程设计项目，**仅用作学习用途**！！！
+注：这个项目为课程设计项目，**仅用作学习用途**！！！
+
+- 王老师的研究生课程《机器视觉》的课程设计
+- 鲜老师的研究生课程《人工智能》的课程设计
 
 ### 统一认证登录流程(数字平台+微信平台)
 

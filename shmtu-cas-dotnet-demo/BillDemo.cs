@@ -2,7 +2,7 @@ using shmtu.cas.auth;
 
 namespace shmtu.cas.demo;
 
-public class BillDemo
+public static class BillDemo
 {
     public static async Task
         TestBill(
@@ -19,7 +19,8 @@ public class BillDemo
             return;
         }
 
-        var billResult = epayAuth.GetBill(pageNo: "1");
+        var billResult =
+            await epayAuth.GetBill(pageNo: "1");
         Console.WriteLine(billResult.Item1);
         Console.WriteLine(billResult.Item2);
     }

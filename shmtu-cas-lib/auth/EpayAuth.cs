@@ -1,3 +1,4 @@
+using System.Net;
 using shmtu.cas.auth.common;
 using shmtu.cas.captcha;
 
@@ -14,52 +15,67 @@ public class EpayAuth
     private string _loginUrl = "";
     private string _loginCookie = "";
 
-    public (int, string, string) GetBill(string pageNo = "1", string tabNo = "1", string cookie = "")
+    public async Task<(int, string, string)>
+        GetBill(
+            string pageNo = "1",
+            string tabNo = "1",
+            string cookie = ""
+        )
     {
         var url =
             "https://ecard.shmtu.edu.cn/epay/consume/query" +
             "?pageNo=" + pageNo +
             "&tabNo=" + tabNo;
 
-        var finalCookie = string.IsNullOrEmpty(cookie) ? this._savedCookie : cookie;
+        var finalCookie = string.IsNullOrEmpty(cookie) ? _savedCookie : cookie;
 
         try
         {
-            using (var response = url.WithCookie("Cookie", finalCookie).AllowAnyHttpStatus().GetAsync().Result)
+            var response = await url
+                .WithCookie("Cookie", finalCookie)
+                .WithAutoRedirect(false)
+                .AllowHttpStatus([302])
+                .GetAsync();
+
+            var responseCodeInt = response.StatusCode;
+            var responseCode = (HttpStatusCode)responseCodeInt;
+
+            if (responseCode == HttpStatusCode.OK)
             {
-                int responseCode = (int)response.StatusCode;
-
-                if (responseCode == 200)
-                {
-                    this._htmlCode = (response.ResponseMessage.Content.ReadAsStringAsync().Result ?? "").Trim();
-                    return (responseCode, this._htmlCode, cookie);
-                }
-
-                if (responseCode == 302)
-                {
-                    var location = response.ResponseMessage.Headers.Location.ToString();
-
-                    // Get all "Set-Cookie" Header
-                    var setCookieHeaders =
-                        response.ResponseMessage.Headers.GetValues("Set-Cookie").ToList();
-
-                    var newCookie = cookie;
-                    foreach (
-                        var currentSetCookie in setCookieHeaders
-                            .Where(currentSetCookie => currentSetCookie.Contains("JSESSIONID"))
-                    )
-                    {
-                        newCookie = currentSetCookie;
-                        break;
-                    }
-
-                    this._savedCookie = newCookie;
-
-                    return (responseCode, location, newCookie);
-                }
-
-                return (responseCode, "", "");
+                _htmlCode = (response.ResponseMessage.Content.ReadAsStringAsync().Result ?? "").Trim();
+                return (responseCodeInt, _htmlCode, cookie);
             }
+
+            if (responseCode == HttpStatusCode.Redirect)
+            {
+                if (response.ResponseMessage.Headers.Location == null)
+                {
+                    Console.WriteLine("Location is null");
+                    return (responseCodeInt, "", "");
+                }
+
+                var location = response.ResponseMessage.Headers.Location.ToString();
+
+                // Get all "Set-Cookie" Header
+                var setCookieHeaders =
+                    response.ResponseMessage.Headers.GetValues("Set-Cookie").ToList();
+
+                var newCookie = cookie;
+                foreach (
+                    var currentSetCookie in setCookieHeaders
+                        .Where(currentSetCookie => currentSetCookie.Contains("JSESSIONID"))
+                )
+                {
+                    newCookie = currentSetCookie;
+                    break;
+                }
+
+                _savedCookie = newCookie;
+
+                return (responseCodeInt, location, newCookie);
+            }
+
+            return (responseCodeInt, "", "");
         }
         catch (Exception ex)
         {
@@ -68,51 +84,47 @@ public class EpayAuth
         }
     }
 
-    public bool TestLoginStatus()
+    public async Task<bool> TestLoginStatus()
     {
-        var resultBill = GetBill(cookie: this._savedCookie);
+        var resultBill =
+            await GetBill(cookie: this._savedCookie);
 
-        if (resultBill.Item1 == 200)
+        switch (resultBill.Item1)
         {
-            // OK
-            return true;
-        }
-        else if (resultBill.Item1 == 302)
-        {
-            this._loginUrl = resultBill.Item2;
-            this._savedCookie = resultBill.Item3;
-            return false;
-        }
-        else
-        {
-            return false;
+            case 200:
+                // OK
+                return true;
+            case 302:
+                _loginUrl = resultBill.Item2;
+                _savedCookie = resultBill.Item3;
+                return false;
+            default:
+                return false;
         }
     }
 
     public async Task<bool> Login(string username, string password)
     {
-        if (string.IsNullOrEmpty(this._loginUrl) || string.IsNullOrEmpty(this._savedCookie))
+        if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_savedCookie))
         {
-            if (TestLoginStatus())
+            if (await TestLoginStatus())
             {
                 return true;
             }
         }
 
-        string executionStr = await CasAuth.GetExecution(this._loginUrl, this._savedCookie);
+        var executionStr = await CasAuth.GetExecution(_loginUrl, _savedCookie);
 
         // Download captcha
-        var resultCaptcha =
+        var (imageData, item2) = 
             await Captcha.GetImageDataFromUrlUsingGet(cookie: this._savedCookie);
 
-        if (resultCaptcha.Item1 == null)
+        if (imageData == null)
         {
             Console.WriteLine("获取验证码图片失败");
             return false;
         }
-
-        byte[] imageData = resultCaptcha.Item1;
-        this._loginCookie = resultCaptcha.Item2;
+        _loginCookie = item2;
 
         // Call remote recognition interface
         string validateCode = Captcha.OcrByRemoteTcpServer("127.0.0.1", 21601, imageData);
@@ -145,7 +157,8 @@ public class EpayAuth
             return false;
         }
 
-        (int, string, string) resultBill = GetBill(cookie: this._savedCookie);
+        var resultBill =
+            await GetBill(cookie: this._savedCookie);
 
         return resultBill.Item1 == 200;
     }

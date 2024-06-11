@@ -130,30 +130,6 @@ public static class Captcha
         return response.Trim();
     }
 
-    // Test local TCP server OCR
-    public static async Task TestLocalTcpServerOcr(string ip, int port)
-    {
-        Console.WriteLine("识别验证码 Test");
-        var imageData = await GetImageDataFromUrlAsync();
-
-        if (imageData.Length == 0)
-        {
-            Console.WriteLine("获取验证码失败");
-            return;
-        }
-
-        var startTime = DateTime.Now;
-        var validateCode = OcrByRemoteTcpServer(ip, port, imageData);
-        var executionTime = DateTime.Now - startTime;
-        Console.WriteLine($"OCR执行时间: {executionTime.TotalMilliseconds} 毫秒");
-
-        var exprResult = GetExprResultByExprString(validateCode);
-        Console.WriteLine(validateCode);
-        Console.WriteLine(exprResult);
-
-        SaveImageToFile(imageData);
-    }
-
     // Get expression result from expression string
     public static string GetExprResultByExprString(string expr)
     {
