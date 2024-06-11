@@ -33,6 +33,14 @@ RestSharp也是一个不错的选择，但是在链式调用方面不如Flurl.Ht
 RestSharp开始于2009年，Flurl.Http开始于2014年。
 虽然Flurl.Http是一个比较新的库，但是已经存在了10年(截止到2024年6月)之久。
 
+**Ref**
+
+https://code-maze.com/httpclient-vs-restsharp/
+
+https://blog.csdn.net/qq_20984273/article/details/135799658
+
+https://www.libhunt.com/compare-Flurl-vs-RestSharp
+
 ## 支持的功能
 
 - 账单查询

@@ -19,4 +19,9 @@
       <None Remove="Shmtu\**" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Flurl.Http" Version="4.0.2" />
+      <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
+    </ItemGroup>
+
 </Project>

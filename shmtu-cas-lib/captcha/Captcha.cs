@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Flurl.Http;
 
 public static class Captcha
 {
@@ -62,9 +63,49 @@ public static class Captcha
     )
     {
         using var httpClient = new HttpClient();
-        using var response = await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead);
+        using var response =
+            await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    public static async Task<(byte[]?, string)>
+        GetImageDataFromUrlUsingGet(string cookie = "")
+    {
+        const string imageUrl = "https://cas.shmtu.edu.cn/cas/captcha";
+
+        try
+        {
+            var response = await imageUrl
+                .WithCookie("Cookie", cookie)
+                .AllowAnyHttpStatus()
+                .GetAsync();
+
+            var responseCode = (HttpStatusCode)response.StatusCode;
+
+
+            if (responseCode != HttpStatusCode.OK)
+            {
+                Console.WriteLine($"请求失败，状态码：{response.StatusCode}");
+                return (null, "");
+            }
+
+            // JSESSIONID是在获取验证码的过程中设置到浏览器的Cookie中的
+            // 如果不存在更新JSESSIONID操作则直接返回原本传入的Cookie
+            // 如果没有传入Cookie，一般服务器会Set-Cookie返回一个新的JSESSIONID
+            // 因此一般不会出现Cookie为空的情况
+            var returnCookie =
+                response.ResponseMessage
+                    .Headers
+                    .GetValues("Set-Cookie").FirstOrDefault() ?? cookie;
+
+            return (response.GetBytesAsync().Result, returnCookie);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"请求失败：{ex.Message}");
+            return (null, "");
+        }
     }
 
     // OCR by remote TCP server
