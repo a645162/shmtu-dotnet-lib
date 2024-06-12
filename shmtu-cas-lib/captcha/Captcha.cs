@@ -77,7 +77,7 @@ public static class Captcha
         try
         {
             var response = await imageUrl
-                .WithCookie("Cookie", cookie)
+                .WithHeader("Cookie", cookie)
                 .AllowAnyHttpStatus()
                 .GetAsync();
 

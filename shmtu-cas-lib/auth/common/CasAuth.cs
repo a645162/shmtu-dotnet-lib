@@ -16,7 +16,7 @@ namespace shmtu.cas.auth.common
             try
             {
                 var response = await url
-                    .WithCookie("Cookie", cookie)
+                    .WithHeader("Cookie", cookie)
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
                     .SendAsync(HttpMethod.Get);
@@ -62,7 +62,21 @@ namespace shmtu.cas.auth.common
                 var response = await url
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
-                    .WithCookies(cookie.Trim())
+                    .WithHeader("Host", "cas.shmtu.edu.cn")
+                    .WithHeader(
+                        "Content-Type",
+                        "application/x-www-form-urlencoded"
+                    )
+                    .WithHeader("Connection", "keep-alive")
+                    .WithHeader("Accept-Encoding", "gzip, deflate, br")
+                    .WithHeader("Accept", "*/*")
+                    .WithHeader(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0"
+                    )
+                    .WithHeader("Cookie", cookie.Trim())
                     .PostUrlEncodedAsync(new
                     {
                         username = username.Trim(),
@@ -128,7 +142,7 @@ namespace shmtu.cas.auth.common
                 var response = await url
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
-                    .WithCookie("Cookie", cookie)
+                    .WithHeader("Cookie", cookie)
                     .GetAsync();
 
                 var responseCodeInt = response.StatusCode;

@@ -27,12 +27,13 @@ public class EpayAuth
             "?pageNo=" + pageNo +
             "&tabNo=" + tabNo;
 
-        var finalCookie = string.IsNullOrEmpty(cookie) ? _savedCookie : cookie;
+        var finalCookie =
+            string.IsNullOrEmpty(cookie) ? _savedCookie : cookie;
 
         try
         {
             var response = await url
-                .WithCookie("Cookie", finalCookie)
+                .WithHeader("Cookie", finalCookie)
                 .WithAutoRedirect(false)
                 .AllowHttpStatus([302])
                 .GetAsync();
@@ -42,8 +43,14 @@ public class EpayAuth
 
             if (responseCode == HttpStatusCode.OK)
             {
-                _htmlCode = (response.ResponseMessage.Content.ReadAsStringAsync().Result ?? "").Trim();
-                return (responseCodeInt, _htmlCode, cookie);
+                _htmlCode =
+                    response.ResponseMessage.Content.ReadAsStringAsync().Result.Trim();
+                if (_htmlCode.Length > 0)
+                {
+                    _htmlCode += "\n";
+                }
+
+                return (CasAuthStatus.Success.ToInt(), _htmlCode, cookie);
             }
 
             if (responseCode == HttpStatusCode.Redirect)
@@ -51,7 +58,7 @@ public class EpayAuth
                 if (response.ResponseMessage.Headers.Location == null)
                 {
                     Console.WriteLine("Location is null");
-                    return (responseCodeInt, "", "");
+                    return (CasAuthStatus.UnrecoverableError.ToInt(), "", "");
                 }
 
                 var location = response.ResponseMessage.Headers.Location.ToString();
@@ -63,16 +70,31 @@ public class EpayAuth
                 var newCookie = cookie;
                 foreach (
                     var currentSetCookie in setCookieHeaders
-                        .Where(currentSetCookie => currentSetCookie.Contains("JSESSIONID"))
+                        .Where(
+                            currentSetCookie =>
+                                currentSetCookie.Contains("JSESSIONID")
+                        )
                 )
                 {
-                    newCookie = currentSetCookie;
+                    newCookie = currentSetCookie.Trim();
                     break;
+                }
+
+                // Remove unused cookie
+                if (newCookie.Length > 0)
+                {
+                    var spiltList = newCookie.Split(";");
+                    foreach (var item in spiltList)
+                    {
+                        if (!item.Contains("JSESSIONID")) continue;
+                        newCookie = item;
+                        break;
+                    }
                 }
 
                 _savedCookie = newCookie;
 
-                return (responseCodeInt, location, newCookie);
+                return (CasAuthStatus.Redirect.ToInt(), location, newCookie);
             }
 
             return (responseCodeInt, "", "");
@@ -135,11 +157,11 @@ public class EpayAuth
 
         var resultCas =
             await CasAuth.CasLogin(
-                this._loginUrl,
+                _loginUrl,
                 username, password,
                 exprResult,
                 executionStr,
-                this._loginCookie
+                _loginCookie
             );
 
         if (resultCas.Item1 != 302)
@@ -151,7 +173,7 @@ public class EpayAuth
         _loginCookie = resultCas.Item3;
 
         var resultRedirect =
-            await CasAuth.CasRedirect(resultCas.Item2, this._savedCookie);
+            await CasAuth.CasRedirect(resultCas.Item2, _savedCookie);
 
         if (resultRedirect.Item1 != 302)
         {
@@ -161,7 +183,7 @@ public class EpayAuth
         }
 
         var resultBill =
-            await GetBill(cookie: this._savedCookie);
+            await GetBill(cookie: _savedCookie);
 
         return resultBill.Item1 == 200;
     }
