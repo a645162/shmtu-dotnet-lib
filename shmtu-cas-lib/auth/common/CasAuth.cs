@@ -62,15 +62,7 @@ namespace shmtu.cas.auth.common
                 var response = await url
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
-                    .WithHeaders(new
-                    {
-                        Host = "cas.shmtu.edu.cn",
-                        ContentType = "application/x-www-form-urlencoded",
-                        Connection = "keep-alive",
-                        AcceptEncoding = "gzip, deflate, br",
-                        Accept = "*/*",
-                        Cookie = cookie.Trim()
-                    })
+                    .WithCookies(cookie.Trim())
                     .PostUrlEncodedAsync(new
                     {
                         username = username.Trim(),
@@ -81,7 +73,8 @@ namespace shmtu.cas.auth.common
                         geolocation = ""
                     });
 
-                var responseCode = (HttpStatusCode)response.StatusCode;
+                var responseCodeInt = response.StatusCode;
+                var responseCode = (HttpStatusCode)responseCodeInt;
 
                 if (responseCode == HttpStatusCode.Redirect)
                 {
@@ -97,31 +90,31 @@ namespace shmtu.cas.auth.common
                     return (response.StatusCode, location, newCookie);
                 }
 
-                var htmlCode = await response.ResponseMessage.Content.ReadAsStringAsync();
+                var htmlCode =
+                    await response.ResponseMessage.Content.ReadAsStringAsync();
                 var document = new HtmlDocument();
                 document.LoadHtml(htmlCode);
                 var element =
-                    document.DocumentNode.SelectSingleNode("#loginErrorsPanel");
-                var errorText = element?.InnerText ?? "";
+                    document.DocumentNode.SelectSingleNode("//*[@id=\"loginErrorsPanel\"]");
+                var errorText = (element?.InnerText ?? "").Trim();
                 Console.WriteLine($"登录失败，错误信息：{errorText}");
-
                 if (errorText.Contains("account is not recognized"))
                 {
                     Console.WriteLine("用户名或密码错误");
-                    return ((int)CasAuthStatus.PasswordError, htmlCode, "");
+                    return (CasAuthStatus.PasswordError.ToInt(), htmlCode, "");
                 }
 
                 if (errorText.Contains("reCAPTCHA"))
                 {
                     Console.WriteLine("验证码错误");
-                    return ((int)CasAuthStatus.ValidateCodeError, htmlCode, "");
+                    return (CasAuthStatus.ValidateCodeError.ToInt(), htmlCode, "");
                 }
 
                 return (response.StatusCode, htmlCode, errorText);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"Core Login Exception: {ex.Message}");
                 return (0, "", "");
             }
         }
@@ -138,7 +131,8 @@ namespace shmtu.cas.auth.common
                     .WithCookie("Cookie", cookie)
                     .GetAsync();
 
-                var responseCode = (HttpStatusCode)response.StatusCode;
+                var responseCodeInt = response.StatusCode;
+                var responseCode = (HttpStatusCode)responseCodeInt;
 
                 if (responseCode == HttpStatusCode.Redirect)
                 {
@@ -151,11 +145,11 @@ namespace shmtu.cas.auth.common
                             .Headers
                             .GetValues("Set-Cookie").FirstOrDefault() ?? "";
 
-                    return (response.StatusCode, location, newCookie);
+                    return (responseCodeInt, location, newCookie);
                 }
 
                 Console.WriteLine($"请求失败，状态码：{response.StatusCode}");
-                return (response.StatusCode, "", "");
+                return (responseCodeInt, "", "");
             }
             catch (Exception ex)
             {

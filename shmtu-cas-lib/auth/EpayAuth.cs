@@ -116,7 +116,7 @@ public class EpayAuth
         var executionStr = await CasAuth.GetExecution(_loginUrl, _savedCookie);
 
         // Download captcha
-        var (imageData, item2) = 
+        var (imageData, item2) =
             await Captcha.GetImageDataFromUrlUsingGet(cookie: this._savedCookie);
 
         if (imageData == null)
@@ -124,11 +124,14 @@ public class EpayAuth
             Console.WriteLine("获取验证码图片失败");
             return false;
         }
+
         _loginCookie = item2;
 
         // Call remote recognition interface
-        string validateCode = Captcha.OcrByRemoteTcpServer("127.0.0.1", 21601, imageData);
-        string exprResult = Captcha.GetExprResultByExprString(validateCode);
+        var validateCode = Captcha.OcrByRemoteTcpServer("127.0.0.1", 21601, imageData);
+        Captcha.SaveImageToFile(imageData, ".");
+        Console.WriteLine(validateCode);
+        var exprResult = Captcha.GetExprResultByExprString(validateCode);
 
         var resultCas =
             await CasAuth.CasLogin(
@@ -145,7 +148,7 @@ public class EpayAuth
             return false;
         }
 
-        this._loginCookie = resultCas.Item3;
+        _loginCookie = resultCas.Item3;
 
         var resultRedirect =
             await CasAuth.CasRedirect(resultCas.Item2, this._savedCookie);
