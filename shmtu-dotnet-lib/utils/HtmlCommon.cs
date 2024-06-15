@@ -1,4 +1,4 @@
-namespace shmtu.cas.utils;
+namespace shmtu.utils;
 
 public class HtmlCommon
 {

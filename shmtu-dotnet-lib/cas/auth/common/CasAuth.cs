@@ -8,18 +8,19 @@ namespace shmtu.cas.auth.common
 {
     public static class CasAuth
     {
-        public static async Task<string> GetExecution(
+        public static async Task<string> GetExecutionString(
             string url = "https://cas.shmtu.edu.cn/cas/login",
             string cookie = ""
         )
         {
             try
             {
-                var response = await url
+                var request = url
                     .WithHeader("Cookie", cookie)
                     .WithAutoRedirect(false)
-                    .AllowHttpStatus([302])
-                    .SendAsync(HttpMethod.Get);
+                    .AllowHttpStatus([302]);
+                var response =
+                    await request.SendAsync(HttpMethod.Get);
 
                 var responseCode = (HttpStatusCode)response.StatusCode;
 
@@ -59,6 +60,26 @@ namespace shmtu.cas.auth.common
         {
             try
             {
+                // var data = new List<KeyValuePair<string, string>>
+                // {
+                //     new("username", username.Trim()),
+                //     new("password", password.Trim()),
+                //     new("validateCode", validateCode.Trim()),
+                //     new("execution", execution.Trim()),
+                //     new("_eventId", "submit"),
+                //     new("geolocation", ""),
+                // };
+
+                var body = new
+                {
+                    username = username.Trim(),
+                    password = password.Trim(),
+                    validateCode = validateCode.Trim(),
+                    execution = execution.Trim(),
+                    _eventId = "submit",
+                    geolocation = ""
+                };
+
                 var response = await url
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
@@ -77,15 +98,7 @@ namespace shmtu.cas.auth.common
                         "Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0"
                     )
                     .WithHeader("Cookie", cookie.Trim())
-                    .PostUrlEncodedAsync(new
-                    {
-                        username = username.Trim(),
-                        password = password.Trim(),
-                        validateCode = validateCode.Trim(),
-                        execution = execution.Trim(),
-                        _eventId = "submit",
-                        geolocation = ""
-                    });
+                    .PostUrlEncodedAsync(body);
 
                 var responseCodeInt = response.StatusCode;
                 var responseCode = (HttpStatusCode)responseCodeInt;
@@ -139,11 +152,11 @@ namespace shmtu.cas.auth.common
         {
             try
             {
-                var response = await url
+                var request = url
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
-                    .WithHeader("Cookie", cookie)
-                    .GetAsync();
+                    .WithHeader("Cookie", cookie);
+                var response = await request.SendAsync(HttpMethod.Get);
 
                 var responseCodeInt = response.StatusCode;
                 var responseCode = (HttpStatusCode)responseCodeInt;

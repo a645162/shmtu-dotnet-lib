@@ -1,4 +1,4 @@
-namespace shmtu.cas.parser;
+namespace shmtu.parser;
 
 public class HotWaterParser
 {

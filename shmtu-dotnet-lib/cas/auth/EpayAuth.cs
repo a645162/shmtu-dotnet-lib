@@ -23,20 +23,18 @@ public class EpayAuth
         )
     {
         var url =
-            "https://ecard.shmtu.edu.cn/epay/consume/query" +
-            "?pageNo=" + pageNo +
-            "&tabNo=" + tabNo;
+            $"https://ecard.shmtu.edu.cn/epay/consume/query?pageNo={pageNo}&tabNo={tabNo}";
 
         var finalCookie =
             string.IsNullOrEmpty(cookie) ? _savedCookie : cookie;
 
         try
         {
-            var response = await url
+            var request = url
                 .WithHeader("Cookie", finalCookie)
                 .WithAutoRedirect(false)
-                .AllowHttpStatus([302])
-                .GetAsync();
+                .AllowHttpStatus([302]);
+            var response = await request.GetAsync();
 
             var responseCodeInt = response.StatusCode;
             var responseCode = (HttpStatusCode)responseCodeInt;
@@ -80,18 +78,6 @@ public class EpayAuth
                     break;
                 }
 
-                // Remove unused cookie
-                if (newCookie.Length > 0)
-                {
-                    var spiltList = newCookie.Split(";");
-                    foreach (var item in spiltList)
-                    {
-                        if (!item.Contains("JSESSIONID")) continue;
-                        newCookie = item;
-                        break;
-                    }
-                }
-
                 _savedCookie = newCookie;
 
                 return (CasAuthStatus.Redirect.ToInt(), location, newCookie);
@@ -109,7 +95,7 @@ public class EpayAuth
     public async Task<bool> TestLoginStatus()
     {
         var resultBill =
-            await GetBill(cookie: this._savedCookie);
+            await GetBill(cookie: _savedCookie);
 
         switch (resultBill.Item1)
         {
@@ -118,7 +104,21 @@ public class EpayAuth
                 return true;
             case 302:
                 _loginUrl = resultBill.Item2;
-                _savedCookie = resultBill.Item3;
+                var savedCookie = resultBill.Item3;
+
+                if (savedCookie.Length <= 0) return false;
+
+                // Remove unused cookie
+                var spiltList = savedCookie.Split(";");
+                foreach (var item in spiltList)
+                {
+                    if (!item.Contains("JSESSIONID")) continue;
+                    savedCookie = item;
+                    break;
+                }
+
+                _savedCookie = savedCookie;
+
                 return false;
             default:
                 return false;
@@ -135,11 +135,12 @@ public class EpayAuth
             }
         }
 
-        var executionStr = await CasAuth.GetExecution(_loginUrl, _savedCookie);
+        var executionString =
+            await CasAuth.GetExecutionString(_loginUrl, _savedCookie);
 
         // Download captcha
-        var (imageData, item2) =
-            await Captcha.GetImageDataFromUrlUsingGet(cookie: this._savedCookie);
+        var (imageData, loginCookie) =
+            await Captcha.GetImageDataFromUrlUsingGet(cookie: _savedCookie);
 
         if (imageData == null)
         {
@@ -147,24 +148,26 @@ public class EpayAuth
             return false;
         }
 
-        _loginCookie = item2;
+        _loginCookie = loginCookie;
 
         // Call remote recognition interface
-        var validateCode = Captcha.OcrByRemoteTcpServer("127.0.0.1", 21601, imageData);
-        Captcha.SaveImageToFile(imageData, ".");
-        Console.WriteLine(validateCode);
-        var exprResult = Captcha.GetExprResultByExprString(validateCode);
+        var validateCodeResult =
+            Captcha.OcrByRemoteTcpServer("127.0.0.1", 21601, imageData);
+        Captcha.SaveImageToFile(imageData);
+        Console.WriteLine(validateCodeResult);
+        var exprResult =
+            Captcha.GetExprResultByExprString(validateCodeResult);
 
         var resultCas =
             await CasAuth.CasLogin(
                 _loginUrl,
                 username, password,
                 exprResult,
-                executionStr,
+                executionString,
                 _loginCookie
             );
 
-        if (resultCas.Item1 != 302)
+        if (resultCas.Item1 != CasAuthStatus.Redirect.ToInt())
         {
             Console.WriteLine($"程序出错，状态码：{resultCas.Item1}");
             return false;
@@ -175,16 +178,18 @@ public class EpayAuth
         var resultRedirect =
             await CasAuth.CasRedirect(resultCas.Item2, _savedCookie);
 
-        if (resultRedirect.Item1 != 302)
+        if (resultRedirect.Item1 != CasAuthStatus.Redirect.ToInt())
         {
             Console.WriteLine("Login Ok,but cannot redirect to bill page.");
             Console.WriteLine($"Status code：{resultRedirect.Item1}");
             return false;
         }
 
+        // var finalTestStatus = await TestLoginStatus();
+
         var resultBill =
             await GetBill(cookie: _savedCookie);
 
-        return resultBill.Item1 == 200;
+        return resultBill.Item1 == CasAuthStatus.Redirect.ToInt();
     }
 }

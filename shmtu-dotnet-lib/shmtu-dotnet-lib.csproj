@@ -2,9 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
-        <RootNamespace>shmtu.cas</RootNamespace>
+        <RootNamespace>shmtu</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <AssemblyName>shmtu-dotnet-lib</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

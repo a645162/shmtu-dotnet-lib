@@ -76,14 +76,12 @@ public static class Captcha
 
         try
         {
-            var response = await imageUrl
-                .WithHeader("Cookie", cookie)
-                .AllowAnyHttpStatus()
-                .GetAsync();
+            var request = imageUrl
+                .WithHeader("Cookie", cookie);
+            var response = await request.GetAsync();
 
             var responseCode = (HttpStatusCode)response.StatusCode;
-
-
+            
             if (responseCode != HttpStatusCode.OK)
             {
                 Console.WriteLine($"请求失败，状态码：{response.StatusCode}");
@@ -97,7 +95,8 @@ public static class Captcha
             var returnCookie =
                 response.ResponseMessage
                     .Headers
-                    .GetValues("Set-Cookie").FirstOrDefault() ?? cookie;
+                    .GetValues("Set-Cookie")
+                    .FirstOrDefault() ?? cookie;
 
             return (response.GetBytesAsync().Result, returnCookie);
         }

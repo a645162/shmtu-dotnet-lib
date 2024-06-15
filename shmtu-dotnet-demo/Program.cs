@@ -1,4 +1,5 @@
-﻿using shmtu.cas;
+﻿using shmtu;
+using shmtu.cas;
 using shmtu.cas.auth.common;
 using shmtu.cas.captcha;
 using shmtu.cas.demo;
@@ -6,7 +7,7 @@ using shmtu.cas.demo;
 // See https://aka.ms/new-console-template for more information
 
 Console.WriteLine("ShangHai Maritime University CAS .NET Library Demo");
-Console.WriteLine($"Library Version: {ShmtuCasDotnet.Version}");
+Console.WriteLine($"Library Version: {ShmtuDotnetLib.Version}");
 
 // Get Env Var
 var userId = Environment.GetEnvironmentVariable("SHMTU_USER_ID") ?? "";
