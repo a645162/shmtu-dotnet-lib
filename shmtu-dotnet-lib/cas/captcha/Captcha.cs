@@ -70,7 +70,7 @@ public static class Captcha
     }
 
     public static async Task<(byte[]?, string)>
-        GetImageDataFromUrlUsingGet(string cookie = "")
+        GetImageDataFromUrlUsingGet(string cookie = "", string userAgent = "")
     {
         const string imageUrl = "https://cas.shmtu.edu.cn/cas/captcha";
 
@@ -78,10 +78,16 @@ public static class Captcha
         {
             var request = imageUrl
                 .WithHeader("Cookie", cookie);
+
+            if (userAgent.Length != 0)
+            {
+                request = request.WithHeader("User-Agent", userAgent);
+            }
+
             var response = await request.GetAsync();
 
             var responseCode = (HttpStatusCode)response.StatusCode;
-            
+
             if (responseCode != HttpStatusCode.OK)
             {
                 Console.WriteLine($"请求失败，状态码：{response.StatusCode}");

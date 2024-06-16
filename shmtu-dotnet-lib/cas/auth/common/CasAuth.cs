@@ -8,6 +8,11 @@ namespace shmtu.cas.auth.common
 {
     public static class CasAuth
     {
+        public const string UserAgent =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0";
+
         public static async Task<string> GetExecutionString(
             string url = "https://cas.shmtu.edu.cn/cas/login",
             string cookie = ""
@@ -60,16 +65,6 @@ namespace shmtu.cas.auth.common
         {
             try
             {
-                // var data = new List<KeyValuePair<string, string>>
-                // {
-                //     new("username", username.Trim()),
-                //     new("password", password.Trim()),
-                //     new("validateCode", validateCode.Trim()),
-                //     new("execution", execution.Trim()),
-                //     new("_eventId", "submit"),
-                //     new("geolocation", ""),
-                // };
-
                 var body = new
                 {
                     username = username.Trim(),
@@ -91,12 +86,7 @@ namespace shmtu.cas.auth.common
                     .WithHeader("Connection", "keep-alive")
                     .WithHeader("Accept-Encoding", "gzip, deflate, br")
                     .WithHeader("Accept", "*/*")
-                    .WithHeader(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0"
-                    )
+                    .WithHeader("User-Agent", UserAgent)
                     .WithHeader("Cookie", cookie.Trim())
                     .PostUrlEncodedAsync(body);
 
@@ -155,6 +145,7 @@ namespace shmtu.cas.auth.common
                 var request = url
                     .WithAutoRedirect(false)
                     .AllowHttpStatus([302])
+                    .WithHeader("User-Agent", UserAgent)
                     .WithHeader("Cookie", cookie);
                 var response = await request.SendAsync(HttpMethod.Get);
 

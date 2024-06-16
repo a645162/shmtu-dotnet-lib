@@ -9,7 +9,7 @@ using Flurl.Http;
 
 public class EpayAuth
 {
-    private string _savedCookie = "";
+    private string _epayCookie = "";
     private string _htmlCode = "";
 
     private string _loginUrl = "";
@@ -22,11 +22,12 @@ public class EpayAuth
             string cookie = ""
         )
     {
+        // https://ecard.shmtu.edu.cn/epay/consume/query?pageNo=1&tabNo=1
         var url =
             $"https://ecard.shmtu.edu.cn/epay/consume/query?pageNo={pageNo}&tabNo={tabNo}";
 
         var finalCookie =
-            string.IsNullOrEmpty(cookie) ? _savedCookie : cookie;
+            string.IsNullOrEmpty(cookie) ? _epayCookie : cookie;
 
         try
         {
@@ -78,7 +79,7 @@ public class EpayAuth
                     break;
                 }
 
-                _savedCookie = newCookie;
+                _epayCookie = newCookie;
 
                 return (CasAuthStatus.Redirect.ToInt(), location, newCookie);
             }
@@ -88,14 +89,14 @@ public class EpayAuth
         catch (Exception ex)
         {
             // Handle exception
-            return (0, ex.Message, "");
+            return (CasAuthStatus.UnrecoverableError.ToInt(), ex.Message, "");
         }
     }
 
     public async Task<bool> TestLoginStatus()
     {
         var resultBill =
-            await GetBill(cookie: _savedCookie);
+            await GetBill(cookie: _epayCookie);
 
         switch (resultBill.Item1)
         {
@@ -104,20 +105,20 @@ public class EpayAuth
                 return true;
             case 302:
                 _loginUrl = resultBill.Item2;
-                var savedCookie = resultBill.Item3;
+                var newCookie = resultBill.Item3;
 
-                if (savedCookie.Length <= 0) return false;
+                if (newCookie.Length <= 0) return false;
 
                 // Remove unused cookie
-                var spiltList = savedCookie.Split(";");
-                foreach (var item in spiltList)
-                {
-                    if (!item.Contains("JSESSIONID")) continue;
-                    savedCookie = item;
-                    break;
-                }
+                // var spiltList = newCookie.Split(";");
+                // foreach (var item in spiltList)
+                // {
+                //     if (!item.Contains("JSESSIONID")) continue;
+                //     newCookie = item;
+                //     break;
+                // }
 
-                _savedCookie = savedCookie;
+                _epayCookie = newCookie;
 
                 return false;
             default:
@@ -127,7 +128,7 @@ public class EpayAuth
 
     public async Task<bool> Login(string username, string password)
     {
-        if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_savedCookie))
+        if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_epayCookie))
         {
             if (await TestLoginStatus())
             {
@@ -136,11 +137,14 @@ public class EpayAuth
         }
 
         var executionString =
-            await CasAuth.GetExecutionString(_loginUrl, _savedCookie);
+            await CasAuth.GetExecutionString(_loginUrl, _epayCookie);
 
         // Download captcha
         var (imageData, loginCookie) =
-            await Captcha.GetImageDataFromUrlUsingGet(cookie: _savedCookie);
+            await Captcha.GetImageDataFromUrlUsingGet(
+                cookie: _loginCookie,
+                userAgent: CasAuth.UserAgent
+            );
 
         if (imageData == null)
         {
@@ -148,6 +152,7 @@ public class EpayAuth
             return false;
         }
 
+        // Got cas login cookie
         _loginCookie = loginCookie;
 
         // Call remote recognition interface
@@ -175,8 +180,9 @@ public class EpayAuth
 
         _loginCookie = resultCas.Item3;
 
+        var redirectCookie = _epayCookie + ";" + _loginCookie;
         var resultRedirect =
-            await CasAuth.CasRedirect(resultCas.Item2, _savedCookie);
+            await CasAuth.CasRedirect(resultCas.Item2, redirectCookie);
 
         if (resultRedirect.Item1 != CasAuthStatus.Redirect.ToInt())
         {
@@ -188,8 +194,8 @@ public class EpayAuth
         // var finalTestStatus = await TestLoginStatus();
 
         var resultBill =
-            await GetBill(cookie: _savedCookie);
+            await GetBill(cookie: _epayCookie);
 
-        return resultBill.Item1 == CasAuthStatus.Redirect.ToInt();
+        return resultBill.Item1 == CasAuthStatus.Success.ToInt();
     }
 }
