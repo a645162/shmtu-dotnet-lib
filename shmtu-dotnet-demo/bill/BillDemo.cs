@@ -1,5 +1,4 @@
 using shmtu.cas.auth;
-using shmtu.datatype.bill;
 using shmtu.parser.bill;
 
 namespace shmtu.cas.demo.bill;
@@ -33,6 +32,14 @@ public static class BillDemo
 
         var parser = new BillHtmlParser(billHtmlCode);
         parser.Parse();
+
+        var billItems = parser.BillItems;
+        foreach (var billItem in billItems)
+        {
+            Console.WriteLine(billItem.ToString());
+        }
+        
+        Console.WriteLine();
     }
 
     private static async Task<string> GetBillFromNet(string userId, string password)
@@ -48,9 +55,9 @@ public static class BillDemo
         }
 
         var billResult =
-            await epayAuth.GetBill(EpayAuth.GetBillUrl(1, BillType.All));
-        Console.WriteLine(billResult.Item1);
-        Console.WriteLine(billResult.Item2);
+            await epayAuth.GetBill(EpayAuth.GetBillUrl(1));
+        Console.WriteLine("Status Code:" + billResult.Item1);
+        // Console.WriteLine(billResult.Item2);
 
         return billResult.Item2;
     }

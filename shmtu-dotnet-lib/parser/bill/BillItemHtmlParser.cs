@@ -67,8 +67,6 @@ public static class BillItemHtmlParser
                 .ReplaceUnusedHtmlTags()
                 .Trim();
 
-        Console.WriteLine();
-
         var billItemInfo =
             new BillItemInfo(
                 dateStr: itemDateStr,

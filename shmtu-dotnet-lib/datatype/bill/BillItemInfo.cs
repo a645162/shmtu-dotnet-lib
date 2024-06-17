@@ -26,8 +26,8 @@ public class BillItemInfo
         StatusString = statusString;
     }
 
-    private string _dateStr="";
-    private string _timeStr="";
+    private string _dateStr = "";
+    private string _timeStr = "";
 
     // 2024.06.17
     public string DateStr
@@ -122,5 +122,48 @@ public class BillItemInfo
 
     // 状态
     public string StatusString;
-    public BillItemStatus Status { get; set; } = BillItemStatus.Success;
+
+    public BillItemStatus Status
+    {
+        get
+        {
+            if (StatusString.Trim() == BillItemStatus.All.GetDescription())
+            {
+                return BillItemStatus.All;
+            }
+
+            if (StatusString.Trim() == BillItemStatus.WaitFor.GetDescription())
+            {
+                return BillItemStatus.WaitFor;
+            }
+
+            if (StatusString.Trim() == BillItemStatus.Success.GetDescription())
+            {
+                return BillItemStatus.Success;
+            }
+
+            if (StatusString.Trim() == BillItemStatus.Failure.GetDescription())
+            {
+                return BillItemStatus.Failure;
+            }
+
+            return BillItemStatus.All;
+        }
+        set
+        {
+            StatusString = value switch
+            {
+                BillItemStatus.All => BillItemStatus.All.GetDescription(),
+                BillItemStatus.WaitFor => BillItemStatus.WaitFor.GetDescription(),
+                BillItemStatus.Success => BillItemStatus.Success.GetDescription(),
+                BillItemStatus.Failure => BillItemStatus.Failure.GetDescription(),
+                _ => StatusString
+            };
+        }
+    }
+
+    public override string ToString()
+    {
+        return $"{DateTimeStringFormated} {ItemType} {Number} {TargetUser} {MoneyStr} {Method} {StatusString}";
+    }
 }

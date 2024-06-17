@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Reflection;
 
 namespace shmtu.datatype.bill;
 
@@ -27,25 +26,5 @@ public static class EnumExtensions
                 false
             );
         return descriptionAttributes.Length > 0 ? descriptionAttributes[0].Description : value.ToString();
-    }
-
-    public static TEnum FromDescription<TEnum>(string description) where TEnum : struct, Enum
-    {
-        foreach (var field in typeof(TEnum).GetFields(BindingFlags.Public | BindingFlags.Static))
-        {
-            var descriptionAttributes = (DescriptionAttribute[])field.GetCustomAttributes(
-                typeof(DescriptionAttribute),
-                false
-            );
-            if (descriptionAttributes.Length > 0 && descriptionAttributes[0].Description == description)
-            {
-                return (TEnum)field.GetValue(null);
-            }
-        }
-
-        throw new ArgumentException(
-            $"No matching enum value found for description '{description}'.",
-            nameof(description)
-            );
     }
 }

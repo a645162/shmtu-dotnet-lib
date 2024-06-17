@@ -15,6 +15,6 @@ public static class BillItemDemo
             "支付宝",
             "#succ"
         );
-        Console.WriteLine();
+        Console.WriteLine(billItemInfo.ToString());
     }
 }
