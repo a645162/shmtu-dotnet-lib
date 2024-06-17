@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>shmtu-dotnet-lib</id>
+    <version>1.0.0</version>
+    <authors>Haomin Kong</authors>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <license type="expression">GPLv3</license>
+    <!-- <icon>icon.png</icon> -->
+    <projectUrl>https://github.com/a645162/shmtu-cas-dotnet</projectUrl>
+    <description>ShangHai Maritime University DotNet Lib</description>
+    <releaseNotes>ShangHai Maritime University DotNet Lib</releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>SHMTU Bill</tags>
+    <dependencies>
+      <group targetFramework=".NETStandard8.0">
+		<dependency Include="Flurl.Http" Version="4.0.2"/>
+		<dependency Include="HtmlAgilityPack" Version="1.11.61"/>
+		<dependency Include="System.Text.Json" Version="8.0.3"/>
+      </group>
+    </dependencies>
+  </metadata>
+</package>
