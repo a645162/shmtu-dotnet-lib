@@ -1,8 +1,6 @@
 ﻿using shmtu;
-using shmtu.cas;
-using shmtu.cas.auth.common;
-using shmtu.cas.captcha;
-using shmtu.cas.demo;
+using shmtu.cas.demo.bill;
+using shmtu.cas.demo.cas;
 
 // See https://aka.ms/new-console-template for more information
 
@@ -18,4 +16,6 @@ Console.WriteLine($"User ID: {userId} Password: {password}");
 // await CaptchaDemo.TestLocalTcpServerOcr("127.0.0.1", 21601);
 // await CaptchaDemo.TestGetImageAndCookie();
 
-await BillDemo.TestBill(userId, password);
+// await BillDemo.TestBill(userId, password);
+
+BillItemDemo.TestBillItem();

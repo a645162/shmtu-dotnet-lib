@@ -1,6 +1,6 @@
 namespace shmtu.parser;
 
-public class HotWaterParser
+public class HotWaterHtmlParser
 {
     
 }

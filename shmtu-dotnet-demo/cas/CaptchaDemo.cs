@@ -1,6 +1,6 @@
 using shmtu.cas.captcha;
 
-namespace shmtu.cas.demo;
+namespace shmtu.cas.demo.cas;
 
 public static class CaptchaDemo
 {
