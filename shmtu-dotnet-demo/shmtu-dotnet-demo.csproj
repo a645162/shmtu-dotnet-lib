@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\shmtu-dotnet-lib\shmtu-dotnet-lib.csproj" />
+        <ProjectReference Include="..\shmtu-dotnet-lib\shmtu-dotnet-lib.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using shmtu.datatype.bill;
 
@@ -6,6 +5,12 @@ namespace shmtu.parser.bill;
 
 public class BillHtmlParser(string htmlCode)
 {
+    public readonly List<BillItemInfo> BillItems = [];
+
+    private HtmlDocument? _billHtmlDocument;
+    private HtmlNode? _rootNode;
+    public int TotalPagesCount;
+
     public string HtmlCode
     {
         get => htmlCode;
@@ -15,11 +20,6 @@ public class BillHtmlParser(string htmlCode)
             Parse();
         }
     }
-
-    private HtmlDocument? _billHtmlDocument;
-    private HtmlNode? _rootNode;
-    public int TotalPagesCount = 0;
-    public readonly List<BillItemInfo> BillItems = [];
 
     public bool Parse()
     {
@@ -45,10 +45,7 @@ public class BillHtmlParser(string htmlCode)
         var billItems =
             BillItemHtmlParser.ParseBillItemInfoList(classRootNode);
 
-        if (billItems.Count == 0)
-        {
-            return false;
-        }
+        if (billItems.Count == 0) return false;
 
         BillItems.AddRange(billItems);
 

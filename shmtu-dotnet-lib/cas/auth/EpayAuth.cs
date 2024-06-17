@@ -1,26 +1,24 @@
 using System.Net;
+using Flurl.Http;
 using shmtu.cas.auth.common;
 using shmtu.cas.captcha;
 using shmtu.datatype.bill;
 
 namespace shmtu.cas.auth;
 
-using System;
-using Flurl.Http;
-
 public class EpayAuth
 {
     private string _epayCookie = "";
     private string _htmlCode = "";
+    private string _loginCookie = "";
 
     private string _loginUrl = "";
-    private string _loginCookie = "";
 
     public static string GetBillUrl(int pageNo = 1, BillType type = BillType.All)
     {
         return GetBillUrl(
-            pageNoString: pageNo.ToString(),
-            type: type
+            pageNo.ToString(),
+            type
         );
     }
 
@@ -44,8 +42,8 @@ public class EpayAuth
         }
 
         return GetBillUrl(
-            pageNoString: pageNoString,
-            tabNoString: tabNoString
+            pageNoString,
+            tabNoString
         );
     }
 
@@ -78,10 +76,7 @@ public class EpayAuth
             {
                 _htmlCode =
                     response.ResponseMessage.Content.ReadAsStringAsync().Result.Trim();
-                if (_htmlCode.Length > 0)
-                {
-                    _htmlCode += "\n";
-                }
+                if (_htmlCode.Length > 0) _htmlCode += "\n";
 
                 return (CasAuthStatus.Success.ToInt(), _htmlCode, cookie);
             }
@@ -163,12 +158,8 @@ public class EpayAuth
     public async Task<bool> Login(string username, string password)
     {
         if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_epayCookie))
-        {
             if (await TestLoginStatus())
-            {
                 return true;
-            }
-        }
 
         var executionString =
             await CasAuth.GetExecutionString(_loginUrl, _epayCookie);
@@ -176,8 +167,8 @@ public class EpayAuth
         // Download captcha
         var (imageData, loginCookie) =
             await Captcha.GetImageDataFromUrlUsingGet(
-                cookie: _loginCookie,
-                userAgent: CasAuth.UserAgent
+                _loginCookie,
+                CasAuth.UserAgent
             );
 
         if (imageData == null)

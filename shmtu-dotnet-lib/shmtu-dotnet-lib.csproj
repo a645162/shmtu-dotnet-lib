@@ -9,21 +9,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="Shmtu\**" />
+        <Compile Remove="Shmtu\**"/>
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Remove="Shmtu\**" />
+        <EmbeddedResource Remove="Shmtu\**"/>
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="Shmtu\**" />
+        <None Remove="Shmtu\**"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Flurl.Http" Version="4.0.2" />
-      <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
-      <PackageReference Include="System.Text.Json" Version="9.0.0-preview.4.24266.19" />
+        <PackageReference Include="Flurl.Http" Version="4.0.2"/>
+        <PackageReference Include="HtmlAgilityPack" Version="1.11.61"/>
+        <PackageReference Include="System.Text.Json" Version="9.0.0-preview.4.24266.19"/>
     </ItemGroup>
 
 </Project>

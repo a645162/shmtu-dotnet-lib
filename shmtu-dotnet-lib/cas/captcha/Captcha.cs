@@ -1,11 +1,10 @@
-namespace shmtu.cas.captcha;
-
-using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using Flurl.Http;
+
+namespace shmtu.cas.captcha;
 
 public static class Captcha
 {
@@ -18,10 +17,7 @@ public static class Captcha
 
         // Try to Read the entire file
         var read = fs.Read(imageBytes, 0, imageBytes.Length);
-        if (read != imageBytes.Length)
-        {
-            throw new Exception("Error reading image file.");
-        }
+        if (read != imageBytes.Length) throw new Exception("Error reading image file.");
 
         return imageBytes;
     }
@@ -39,7 +35,7 @@ public static class Captcha
     // Check IP address
     public static bool ValidateIpAddress(string ip)
     {
-        return System.Text.RegularExpressions.Regex.IsMatch(
+        return Regex.IsMatch(
             ip,
             @"^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
             @"([01]?\d\d?|2[0-4]\d|25[0-5])\." +
@@ -79,10 +75,7 @@ public static class Captcha
             var request = imageUrl
                 .WithHeader("Cookie", cookie);
 
-            if (userAgent.Length != 0)
-            {
-                request = request.WithHeader("User-Agent", userAgent);
-            }
+            if (userAgent.Length != 0) request = request.WithHeader("User-Agent", userAgent);
 
             var response = await request.GetAsync();
 

@@ -12,19 +12,14 @@ public static class BillItemHtmlParser
                 .ChildNodes
                 .Where(node => node.NodeType == HtmlNodeType.Element)
                 .ToList();
-        if (children.Count != 7)
-        {
-            throw new InvalidOperationException("Expected 7 children in each tr element");
-        }
+        if (children.Count != 7) throw new InvalidOperationException("Expected 7 children in each tr element");
 
         var datetimeChildElement = children[0]
             .ChildNodes
             .Where(node => node.NodeType == HtmlNodeType.Element)
             .ToList();
         if (datetimeChildElement.Count != 2)
-        {
             throw new InvalidOperationException("Expected 2 children in each datetime element");
-        }
 
         var itemDateStr =
             datetimeChildElement[0].InnerText
@@ -70,14 +65,14 @@ public static class BillItemHtmlParser
 
         var billItemInfo =
             new BillItemInfo(
-                dateString: itemDateStr,
-                timeString: itemTimeStr,
-                itemType: itemType,
-                number: itemNumber,
-                targetUser: itemTargetUser,
-                moneyString: itemMoneyStr,
-                method: itemMethod,
-                statusString: itemStatus
+                itemDateStr,
+                itemTimeStr,
+                itemType,
+                itemNumber,
+                itemTargetUser,
+                itemMoneyStr,
+                itemMethod,
+                itemStatus
             );
 
         return billItemInfo;
@@ -86,21 +81,14 @@ public static class BillItemHtmlParser
     public static List<BillItemInfo> ParseBillItemInfoList(HtmlNode classRootNode)
     {
         var tbodyElement = classRootNode.SelectSingleNode("table/tbody");
-        if (tbodyElement == null)
-        {
-            throw new ArgumentNullException(nameof(tbodyElement), "tbodyElement is null");
-        }
+        if (tbodyElement == null) throw new ArgumentNullException(nameof(tbodyElement), "tbodyElement is null");
 
         var trElements = tbodyElement.SelectNodes("tr").ToList();
-        if (trElements == null || trElements.Count == 0)
-        {
-            throw new InvalidOperationException("No tr elements found");
-        }
+        if (trElements == null || trElements.Count == 0) throw new InvalidOperationException("No tr elements found");
 
         var billList = new List<BillItemInfo>(trElements.Count);
 
         foreach (var tr in trElements)
-        {
             try
             {
                 var billItemInfo = ParseBillItemInfo(tr);
@@ -110,7 +98,6 @@ public static class BillItemHtmlParser
             {
                 Console.WriteLine(e.Message);
             }
-        }
 
         return billList;
     }

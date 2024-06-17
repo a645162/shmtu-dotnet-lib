@@ -36,6 +36,7 @@ public static class CaptchaDemo
             Console.WriteLine("获取验证码图片失败");
             return;
         }
+
         Captcha.SaveImageToFile(imageData.Item1);
         Console.WriteLine(imageData.Item2);
     }

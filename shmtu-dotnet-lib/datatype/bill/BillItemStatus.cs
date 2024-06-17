@@ -15,10 +15,7 @@ public static class EnumExtensions
     public static string GetDescription(this Enum value)
     {
         var fieldInfo = value.GetType().GetField(value.ToString());
-        if (fieldInfo == null)
-        {
-            return value.ToString();
-        }
+        if (fieldInfo == null) return value.ToString();
 
         var descriptionAttributes =
             (DescriptionAttribute[])fieldInfo.GetCustomAttributes(

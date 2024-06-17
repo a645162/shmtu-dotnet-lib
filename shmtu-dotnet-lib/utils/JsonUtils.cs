@@ -7,7 +7,7 @@ public static class JsonUtils
 {
     public static readonly JsonSerializerOptions
         ProgramJsonSerializerOptions =
-            new JsonSerializerOptions
+            new()
             {
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 WriteIndented = true

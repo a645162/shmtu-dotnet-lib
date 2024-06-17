@@ -4,11 +4,32 @@ using shmtu.utils;
 
 namespace shmtu.datatype.bill;
 
-using System;
-
 public class BillItemInfo
 {
-    // 交易(创建)时间
+    private string _dateStrFormated = "";
+
+    private string _dateString = "";
+    private string _timeStrFormat = "";
+    private string _timeString = "";
+
+    // (交易)名称
+    [JsonInclude] public string ItemType;
+    
+    // 交易号
+    [JsonInclude] public string Number;
+    
+    // 对方
+    [JsonInclude] public string TargetUser;
+
+    // 金额
+    [JsonInclude] public string MoneyString;
+
+    // 付款方式
+    [JsonInclude] public string Method;
+    
+    // 状态
+    [JsonInclude] public string StatusString;
+
     public BillItemInfo(
         string dateString, string timeString,
         string itemType,
@@ -19,27 +40,37 @@ public class BillItemInfo
         string statusString
     )
     {
+        // 创建时间
         DateString = dateString;
         TimeString = timeString;
 
+        // 名称
         ItemType = itemType;
+        // 交易号
         Number = number;
+
+        // 对方
         TargetUser = targetUser;
+
+        // 金额
         MoneyString = moneyString;
+
+        // 付款方式
         Method = method;
+
+        // 状态
         StatusString = statusString;
     }
 
-    private string _dateString = "";
-    private string _timeString = "";
-
-    // 2024.06.17
+    // Example:2024.06.17
     [JsonInclude]
     public string DateString
     {
         get => _dateString;
         set
         {
+            value = value.Trim();
+
             if (value.Length != 10)
                 throw new ArgumentException("DateStr must be 10 characters long");
 
@@ -47,30 +78,40 @@ public class BillItemInfo
 
             // Format date string
             _dateStrFormated = value;
-            _dateStrFormated = _dateStrFormated.Replace(".", "-");
+            _dateStrFormated =
+                _dateStrFormated
+                    .Replace("_", "-")
+                    .Replace(".", "-");
         }
     }
 
-    // 123456
+    // Example:123456
     [JsonInclude]
     public string TimeString
     {
         get => _timeString;
         set
         {
-            if (value.Length != 6)
+            value = value.Trim();
+
+            if (value.Length != 6 && value.Length != 8)
                 throw new ArgumentException("TimeStr must be 6 characters long");
 
             _timeString = value;
 
             // Format time string
-            _timeStrFormat = value;
+            _timeStrFormat =
+                value
+                    .Replace("-", ":")
+                    .Replace("_", ":")
+                    .Replace(".", ":");
+
+            if (value.Length == 8)
+                return;
+
             _timeStrFormat = _timeStrFormat.Insert(2, ":").Insert(5, ":");
         }
     }
-
-    private string _dateStrFormated = "";
-    private string _timeStrFormat = "";
 
     [JsonIgnore]
     public string DateTimeStringFormated
@@ -89,8 +130,8 @@ public class BillItemInfo
         get => DateTime.Parse(DateTimeStringFormated);
         set
         {
-            _dateStrFormated = value.ToString("yyyy-MM-dd");
-            _timeStrFormat = value.ToString("HH:mm:ss");
+            DateString = value.ToString("yyyy-MM-dd");
+            TimeString = value.ToString("HH:mm:ss");
         }
     }
 
@@ -100,18 +141,6 @@ public class BillItemInfo
         get => ((DateTimeOffset)DatetimeObject).ToUnixTimeSeconds();
         set => DatetimeObject = DateTimeOffset.FromUnixTimeSeconds(value).DateTime;
     }
-
-    // (交易)名称
-    [JsonInclude] public string ItemType;
-
-    // 交易号
-    [JsonInclude] public string Number;
-
-    // 对方
-    [JsonInclude] public string TargetUser;
-
-    // 金额
-    [JsonInclude] public string MoneyString;
 
     [JsonIgnore]
     public float Money
@@ -127,36 +156,18 @@ public class BillItemInfo
             MoneyString = value.ToString("F2");
     }
 
-    // 付款方式
-    [JsonInclude] public string Method;
-
-    // 状态
-    [JsonInclude] public string StatusString;
-
     [JsonIgnore]
     public BillItemStatus Status
     {
         get
         {
-            if (StatusString.Trim() == BillItemStatus.All.GetDescription())
-            {
-                return BillItemStatus.All;
-            }
+            if (StatusString.Trim() == BillItemStatus.All.GetDescription()) return BillItemStatus.All;
 
-            if (StatusString.Trim() == BillItemStatus.WaitFor.GetDescription())
-            {
-                return BillItemStatus.WaitFor;
-            }
+            if (StatusString.Trim() == BillItemStatus.WaitFor.GetDescription()) return BillItemStatus.WaitFor;
 
-            if (StatusString.Trim() == BillItemStatus.Success.GetDescription())
-            {
-                return BillItemStatus.Success;
-            }
+            if (StatusString.Trim() == BillItemStatus.Success.GetDescription()) return BillItemStatus.Success;
 
-            if (StatusString.Trim() == BillItemStatus.Failure.GetDescription())
-            {
-                return BillItemStatus.Failure;
-            }
+            if (StatusString.Trim() == BillItemStatus.Failure.GetDescription()) return BillItemStatus.Failure;
 
             return BillItemStatus.All;
         }
@@ -181,8 +192,8 @@ public class BillItemInfo
     public string ToJsonString()
     {
         return JsonSerializer.Serialize(
-            value: this,
-            options: JsonUtils.ProgramJsonSerializerOptions
+            this,
+            JsonUtils.ProgramJsonSerializerOptions
         );
     }
 
@@ -194,8 +205,8 @@ public class BillItemInfo
     public static string ListToJsonString(List<BillItemInfo> billItemInfoList)
     {
         return JsonSerializer.Serialize(
-            value: billItemInfoList,
-            options: JsonUtils.ProgramJsonSerializerOptions
+            billItemInfoList,
+            JsonUtils.ProgramJsonSerializerOptions
         );
     }
 

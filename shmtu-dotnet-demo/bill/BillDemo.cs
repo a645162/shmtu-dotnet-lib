@@ -35,10 +35,7 @@ public static class BillDemo
         parser.Parse();
 
         var billItems = parser.BillItems;
-        foreach (var billItem in billItems)
-        {
-            Console.WriteLine(billItem.ToString());
-        }
+        foreach (var billItem in billItems) Console.WriteLine(billItem.ToString());
 
         var jsonString =
             BillItemInfo.ListToJsonString(billItems);
