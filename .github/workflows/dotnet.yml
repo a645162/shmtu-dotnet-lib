@@ -27,6 +27,11 @@ jobs:
         with:
           python-version: 3.12
 
+      - name: Install NuGet client
+        uses: warrenbuckley/Setup-Nuget@v1
+      - name: Test NuGet Client
+        run: nuget help
+
       - name: (.Net)Restore dependencies
         run: dotnet restore
       - name: (.Net)Build
@@ -42,6 +47,7 @@ jobs:
             ./shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
 
       - name: (.Net)Publish
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          export NUGET_API_KEY=${{ secrets.NUGET_API_KEY }}
           python ./Scripts/push_nuget.py
