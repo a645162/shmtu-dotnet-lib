@@ -8,6 +8,8 @@
 移植自Kotlin版本，项目仓库：
 [a645162/shmtu-cas-kotlin](https://github.com/a645162/shmtu-cas-kotlin)
 
+[NuGet仓库](https://www.nuget.org/packages/shmtu-dotnet-lib)
+
 这是一个使用.Net Core实现的上海海事大学CAS系统登录流程的项目。
 为后面推出.Net Core+AvaloniaUI的项目做准备。
 
@@ -89,6 +91,7 @@ https://www.libhunt.com/compare-Flurl-vs-RestSharp
 * 基础库
   [a645162/shmtu-dotnet-lib](https://github.com/a645162/shmtu-dotnet-lib)
   这是桌面版客户端的基础库。
+  [NuGet](https://www.nuget.org/packages/shmtu-dotnet-lib)
 
 * Android客户端(Google Play)
   推荐前往Google Play商店下载App体验验证码识别。
