@@ -1,10 +1,13 @@
 using shmtu.cas.auth;
+using shmtu.datatype.bill;
 using shmtu.parser.bill;
 
 namespace shmtu.cas.demo.bill;
 
 public static class BillDemo
 {
+    private const string HtmlFilePath = "bill.html";
+
     public static async Task TestBill(string userId, string password)
     {
         var billHtmlCode = "";
@@ -12,15 +15,22 @@ public static class BillDemo
 
         if (string.IsNullOrEmpty(billHtmlCode))
         {
+            // Check if file exists
+            if (!File.Exists(HtmlFilePath))
+            {
+                Console.WriteLine("Html File not found");
+                return;
+            }
+
             // Read From File
-            billHtmlCode = await File.ReadAllTextAsync("bill.html");
+            billHtmlCode = await File.ReadAllTextAsync(HtmlFilePath);
         }
         else
         {
             // Write to file
-            await File.WriteAllTextAsync("bill.html", billHtmlCode);
+            await File.WriteAllTextAsync(HtmlFilePath, billHtmlCode);
         }
-        
+
         var parser = new BillHtmlParser(billHtmlCode);
         parser.Parse();
     }
@@ -38,7 +48,7 @@ public static class BillDemo
         }
 
         var billResult =
-            await epayAuth.GetBill(pageNo: "1");
+            await epayAuth.GetBill(EpayAuth.GetBillUrl(1, BillType.All));
         Console.WriteLine(billResult.Item1);
         Console.WriteLine(billResult.Item2);
 

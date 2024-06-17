@@ -7,7 +7,7 @@ public enum BillItemStatus
 {
     [Description("#all")] All,
     [Description("#waitfor")] WaitFor,
-    [Description("#succ")] Success,
+    [Description("交易成功")] Success,
     [Description("#fail")] Failure
 }
 

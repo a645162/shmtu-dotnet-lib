@@ -26,8 +26,8 @@ public class BillItemInfo
         StatusString = statusString;
     }
 
-    private string _dateStr;
-    private string _timeStr;
+    private string _dateStr="";
+    private string _timeStr="";
 
     // 2024.06.17
     public string DateStr
@@ -93,13 +93,13 @@ public class BillItemInfo
     }
 
     // (交易)名称
-    public string ItemType { get; set; }
+    public string ItemType;
 
     // 交易号
-    public string Number { get; set; }
+    public string Number;
 
     // 对方
-    public string TargetUser { get; set; }
+    public string TargetUser;
 
     // 金额
     public string MoneyStr;
@@ -108,7 +108,7 @@ public class BillItemInfo
     {
         get
         {
-            if (float.TryParse(MoneyStr, out float money))
+            if (float.TryParse(MoneyStr, out var money))
                 return money;
             return 0;
         }

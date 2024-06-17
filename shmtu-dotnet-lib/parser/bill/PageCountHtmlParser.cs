@@ -6,27 +6,15 @@ namespace shmtu.parser.bill;
 
 public static partial class PageCountHtmlParser
 {
-    public static int GetTotalPagesCount(
-        HtmlNode rootNode,
-        BillType billType = BillType.All
-    )
+    public static int GetTotalPagesCount(HtmlNode classRootNode)
     {
-        if (rootNode == null)
+        if (classRootNode == null)
         {
-            throw new ArgumentNullException(nameof(rootNode), "RootNode is null");
+            throw new ArgumentNullException(nameof(classRootNode), "RootNode is null");
         }
 
-        var idName = billType switch
-        {
-            BillType.All => "zone_show_box_1",
-            BillType.NotPaid => "zone_show_box_2",
-            BillType.Success => "zone_show_box_3",
-            BillType.Failure => "zone_show_box_4",
-            _ => throw new ArgumentOutOfRangeException(nameof(billType), billType, null)
-        };
-
-        var pageCountTextElement = rootNode
-            .SelectSingleNode($"//*[@id=\"aazone.{idName}\"]/div/td/table/tr/td");
+        var pageCountTextElement = classRootNode
+            .SelectSingleNode($"div/td/table/tr/td");
         if (pageCountTextElement == null)
         {
             throw new InvalidOperationException("Page count text element not found");
@@ -34,7 +22,7 @@ public static partial class PageCountHtmlParser
 
         var pageText =
             pageCountTextElement.InnerText
-                .Replace("&nbsp;", "")
+                .ReplaceUnusedHtmlTags()
                 .Trim();
 
         if (string.IsNullOrEmpty(pageText))

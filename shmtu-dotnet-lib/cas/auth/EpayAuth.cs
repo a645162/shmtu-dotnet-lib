@@ -1,6 +1,7 @@
 using System.Net;
 using shmtu.cas.auth.common;
 using shmtu.cas.captcha;
+using shmtu.datatype.bill;
 
 namespace shmtu.cas.auth;
 
@@ -15,17 +16,50 @@ public class EpayAuth
     private string _loginUrl = "";
     private string _loginCookie = "";
 
-    public async Task<(int, string, string)>
-        GetBill(
-            string pageNo = "1",
-            string tabNo = "1",
-            string cookie = ""
-        )
+    public static string GetBillUrl(int pageNo = 1, BillType type = BillType.All)
+    {
+        return GetBillUrl(
+            pageNoString: pageNo.ToString(),
+            type: type
+        );
+    }
+
+    public static string GetBillUrl(string pageNoString = "1", BillType type = BillType.All)
+    {
+        var tabNoString = "1";
+        switch (type)
+        {
+            case BillType.All:
+                tabNoString = "1";
+                break;
+            case BillType.NotPaid:
+                tabNoString = "2";
+                break;
+            case BillType.Success:
+                tabNoString = "3";
+                break;
+            case BillType.Failure:
+                tabNoString = "4";
+                break;
+        }
+
+        return GetBillUrl(
+            pageNoString: pageNoString,
+            tabNoString: tabNoString
+        );
+    }
+
+    public static string GetBillUrl(string pageNoString = "1", string tabNoString = "1")
     {
         // https://ecard.shmtu.edu.cn/epay/consume/query?pageNo=1&tabNo=1
-        var url =
-            $"https://ecard.shmtu.edu.cn/epay/consume/query?pageNo={pageNo}&tabNo={tabNo}";
+        return $"https://ecard.shmtu.edu.cn/epay/consume/query?pageNo={pageNoString}&tabNo={tabNoString}";
+    }
 
+    public async Task<(int, string, string)> GetBill(
+        string url = "https://ecard.shmtu.edu.cn/epay/consume/query?pageNo=1&tabNo=1",
+        string cookie = ""
+    )
+    {
         var finalCookie =
             string.IsNullOrEmpty(cookie) ? _epayCookie : cookie;
 

@@ -16,6 +16,6 @@ Console.WriteLine($"User ID: {userId} Password: {password}");
 // await CaptchaDemo.TestLocalTcpServerOcr("127.0.0.1", 21601);
 // await CaptchaDemo.TestGetImageAndCookie();
 
-// await BillDemo.TestBill(userId, password);
+await BillDemo.TestBill(userId, password);
 
 BillItemDemo.TestBillItem();
