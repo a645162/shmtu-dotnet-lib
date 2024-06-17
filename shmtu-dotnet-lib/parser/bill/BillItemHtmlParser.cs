@@ -46,6 +46,7 @@ public static class BillItemHtmlParser
         var itemNumber =
             dealChildElement[1].InnerText
                 .ReplaceUnusedHtmlTags()
+                .Replace("交易号：", "")
                 .Trim();
 
         var itemTargetUser =
@@ -69,12 +70,12 @@ public static class BillItemHtmlParser
 
         var billItemInfo =
             new BillItemInfo(
-                dateStr: itemDateStr,
-                timeStr: itemTimeStr,
+                dateString: itemDateStr,
+                timeString: itemTimeStr,
                 itemType: itemType,
                 number: itemNumber,
                 targetUser: itemTargetUser,
-                moneyStr: itemMoneyStr,
+                moneyString: itemMoneyStr,
                 method: itemMethod,
                 statusString: itemStatus
             );

@@ -1,4 +1,5 @@
 using shmtu.cas.auth;
+using shmtu.datatype.bill;
 using shmtu.parser.bill;
 
 namespace shmtu.cas.demo.bill;
@@ -38,7 +39,12 @@ public static class BillDemo
         {
             Console.WriteLine(billItem.ToString());
         }
-        
+
+        var jsonString =
+            BillItemInfo.ListToJsonString(billItems);
+        // Save Json
+        await File.WriteAllTextAsync("bill.json", jsonString);
+
         Console.WriteLine();
     }
 

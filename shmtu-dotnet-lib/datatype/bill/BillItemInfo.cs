@@ -1,3 +1,7 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using shmtu.utils;
+
 namespace shmtu.datatype.bill;
 
 using System;
@@ -6,39 +10,40 @@ public class BillItemInfo
 {
     // 交易(创建)时间
     public BillItemInfo(
-        string dateStr, string timeStr,
+        string dateString, string timeString,
         string itemType,
         string number,
         string targetUser,
-        string moneyStr,
+        string moneyString,
         string method,
         string statusString
     )
     {
-        DateStr = dateStr;
-        TimeStr = timeStr;
+        DateString = dateString;
+        TimeString = timeString;
 
         ItemType = itemType;
         Number = number;
         TargetUser = targetUser;
-        MoneyStr = moneyStr;
+        MoneyString = moneyString;
         Method = method;
         StatusString = statusString;
     }
 
-    private string _dateStr = "";
-    private string _timeStr = "";
+    private string _dateString = "";
+    private string _timeString = "";
 
     // 2024.06.17
-    public string DateStr
+    [JsonInclude]
+    public string DateString
     {
-        get => _dateStr;
+        get => _dateString;
         set
         {
             if (value.Length != 10)
                 throw new ArgumentException("DateStr must be 10 characters long");
 
-            _dateStr = value;
+            _dateString = value;
 
             // Format date string
             _dateStrFormated = value;
@@ -47,15 +52,16 @@ public class BillItemInfo
     }
 
     // 123456
-    public string TimeStr
+    [JsonInclude]
+    public string TimeString
     {
-        get => _timeStr;
+        get => _timeString;
         set
         {
             if (value.Length != 6)
                 throw new ArgumentException("TimeStr must be 6 characters long");
 
-            _timeStr = value;
+            _timeString = value;
 
             // Format time string
             _timeStrFormat = value;
@@ -66,6 +72,7 @@ public class BillItemInfo
     private string _dateStrFormated = "";
     private string _timeStrFormat = "";
 
+    [JsonIgnore]
     public string DateTimeStringFormated
     {
         get
@@ -76,6 +83,7 @@ public class BillItemInfo
         }
     }
 
+    [JsonIgnore]
     public DateTime DatetimeObject
     {
         get => DateTime.Parse(DateTimeStringFormated);
@@ -86,6 +94,7 @@ public class BillItemInfo
         }
     }
 
+    [JsonIgnore]
     public long TimeStamp
     {
         get => ((DateTimeOffset)DatetimeObject).ToUnixTimeSeconds();
@@ -93,36 +102,38 @@ public class BillItemInfo
     }
 
     // (交易)名称
-    public string ItemType;
+    [JsonInclude] public string ItemType;
 
     // 交易号
-    public string Number;
+    [JsonInclude] public string Number;
 
     // 对方
-    public string TargetUser;
+    [JsonInclude] public string TargetUser;
 
     // 金额
-    public string MoneyStr;
+    [JsonInclude] public string MoneyString;
 
+    [JsonIgnore]
     public float Money
     {
         get
         {
-            if (float.TryParse(MoneyStr, out var money))
+            if (float.TryParse(MoneyString, out var money))
                 return money;
             return 0;
         }
         set =>
             // 格式化输出为只有两位小数的字符串
-            MoneyStr = value.ToString("F2");
+            MoneyString = value.ToString("F2");
     }
 
     // 付款方式
-    public string Method;
+    [JsonInclude] public string Method;
 
     // 状态
-    public string StatusString;
+    [JsonInclude] public string StatusString;
 
+    [JsonIgnore]
     public BillItemStatus Status
     {
         get
@@ -164,6 +175,32 @@ public class BillItemInfo
 
     public override string ToString()
     {
-        return $"{DateTimeStringFormated} {ItemType} {Number} {TargetUser} {MoneyStr} {Method} {StatusString}";
+        return $"{DateTimeStringFormated} {ItemType} {Number} {TargetUser} {MoneyString} {Method} {StatusString}";
+    }
+
+    public string ToJsonString()
+    {
+        return JsonSerializer.Serialize(
+            value: this,
+            options: JsonUtils.ProgramJsonSerializerOptions
+        );
+    }
+
+    public static BillItemInfo? FromJsonString(string jsonString)
+    {
+        return JsonSerializer.Deserialize<BillItemInfo>(jsonString);
+    }
+
+    public static string ListToJsonString(List<BillItemInfo> billItemInfoList)
+    {
+        return JsonSerializer.Serialize(
+            value: billItemInfoList,
+            options: JsonUtils.ProgramJsonSerializerOptions
+        );
+    }
+
+    public static List<BillItemInfo>? ListFromJsonString(string jsonString)
+    {
+        return JsonSerializer.Deserialize<List<BillItemInfo>>(jsonString);
     }
 }

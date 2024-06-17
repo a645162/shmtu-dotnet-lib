@@ -19,7 +19,7 @@ public class BillHtmlParser(string htmlCode)
     private HtmlDocument? _billHtmlDocument;
     private HtmlNode? _rootNode;
     public int TotalPagesCount = 0;
-    public List<BillItemInfo> BillItems = [];
+    public readonly List<BillItemInfo> BillItems = [];
 
     public bool Parse()
     {
