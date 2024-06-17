@@ -4,7 +4,7 @@
 
 ## 移植说明
 
-[本项目](https://github.com/a645162/shmtu-cas-dotnet)
+[本项目](https://github.com/a645162/shmtu-dotnet-lib)
 移植自Kotlin版本，项目仓库：
 [a645162/shmtu-cas-kotlin](https://github.com/a645162/shmtu-cas-kotlin)
 
@@ -87,7 +87,7 @@ https://www.libhunt.com/compare-Flurl-vs-RestSharp
   [a645162/shmtu-terminal-desktop](https://github.com/a645162/shmtu-terminal-desktop)
 
 * 基础库
-  [a645162/shmtu-cas-dotnet](https://github.com/a645162/shmtu-cas-dotnet)
+  [a645162/shmtu-dotnet-lib](https://github.com/a645162/shmtu-dotnet-lib)
   这是桌面版客户端的基础库。
 
 * Android客户端(Google Play)
@@ -112,7 +112,7 @@ https://www.libhunt.com/compare-Flurl-vs-RestSharp
 * Go版(为Wails桌面客户端做准备)
   [a645162/shmtu-cas-go](https://github.com/a645162/shmtu-cas-go)
 * .Net Core版(为AvaloniaUI桌面客户端做准备)
-  [a645162/shmtu-cas-dotnet](https://github.com/a645162/shmtu-cas-dotnet)
+  [a645162/shmtu-dotnet-lib](https://github.com/a645162/shmtu-dotnet-lib)
 * Rust版(未来想做Tauri桌面客户端可能会移植)
   ps.功能其实和Golang版本没啥区别，甚至可能实现地更费劲，Golang的移植已经让我比较抓狂了，虽然Rust我也是会的，但是或许不会做。。。
 

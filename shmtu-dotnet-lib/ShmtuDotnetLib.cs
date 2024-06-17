@@ -1,6 +1,14 @@
-﻿namespace shmtu;
+﻿using System.Reflection;
+
+namespace shmtu;
 
 public static class ShmtuDotnetLib
 {
-    public const string Version = "0.1.0";
+    public static string Version => GetVersion();
+
+    private static string GetVersion()
+    {
+        var name = Assembly.GetExecutingAssembly().GetName();
+        return name.Version?.ToString() ?? "";
+    }
 }

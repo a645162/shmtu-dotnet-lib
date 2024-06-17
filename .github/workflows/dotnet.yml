@@ -15,14 +15,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: (.Net)Restore dependencies
+        run: dotnet restore
+      - name: (.Net)Build
+        run: dotnet build --no-restore --configuration Release
+      - name: (.Net)Test
+        run: dotnet test --no-build --verbosity normal
+
+      - name: (.Net)Pack
+        run: |
+          dotnet pack \
+            --configuration Release \
+            --output ./Output \
+            ./shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
+
+      - name: (.Net)Publish
+        run: |
+          python ./Scripts/push_nuget.py
