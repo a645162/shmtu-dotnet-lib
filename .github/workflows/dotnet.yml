@@ -27,8 +27,8 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install NuGet client
-        uses: warrenbuckley/Setup-Nuget@v1
+#      - name: Install NuGet client
+#        uses: warrenbuckley/Setup-Nuget@v1
       - name: Test NuGet Client
         run: nuget help
 
