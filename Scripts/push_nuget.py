@@ -9,12 +9,12 @@ if __name__ == "__main__":
         xml_content = f.read()
 
     version = parse_version(xml_content)
-    nuget_key = os.environ["NUGET_KEY"]
+    nuget_api_key = os.environ["NUGET_API_KEY"]
 
     cmd = (
         f"nuget push "
         f"\"Output/shmtu-dotnet-lib.{version}.nupkg\" "
-        f"\"{nuget_key}\" "
+        f"\"{nuget_api_key}\" "
         f"-Source https://api.nuget.org/v3/index.json"
     )
 
