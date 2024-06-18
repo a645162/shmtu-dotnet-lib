@@ -14,21 +14,21 @@ public class BillItemInfo
 
     // (交易)名称
     [JsonInclude] public string ItemType;
-    
-    // 交易号
-    [JsonInclude] public string Number;
-    
-    // 对方
-    [JsonInclude] public string TargetUser;
+
+    // 付款方式
+    [JsonInclude] public string Method;
 
     // 金额
     [JsonInclude] public string MoneyString;
 
-    // 付款方式
-    [JsonInclude] public string Method;
-    
+    // 交易号
+    [JsonInclude] public string Number;
+
     // 状态
     [JsonInclude] public string StatusString;
+
+    // 对方
+    [JsonInclude] public string TargetUser;
 
     public BillItemInfo(
         string dateString, string timeString,

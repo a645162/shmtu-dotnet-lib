@@ -128,6 +128,26 @@ public static class Captcha
         return response.Trim();
     }
 
+    public static async Task<string> OcrByRemoteTcpServerAsync(string host, int port, byte[] imageData)
+    {
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        await socket.ConnectAsync(host, port);
+        socket.SendTimeout = 5000;
+
+        var stream = new NetworkStream(socket);
+        stream.Write(imageData, 0, imageData.Length);
+        stream.Flush();
+
+        var endMarker = "<END>"u8.ToArray();
+        await stream.WriteAsync(endMarker, 0, endMarker.Length);
+
+        var buffer = new byte[1024];
+        var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+        var response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+        return response.Trim();
+    }
+
     // Get expression result from expression string
     public static string GetExprResultByExprString(string expr)
     {
