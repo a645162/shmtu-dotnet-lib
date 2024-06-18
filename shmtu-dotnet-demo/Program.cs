@@ -1,6 +1,5 @@
 ﻿using shmtu;
 using shmtu.cas.demo.bill;
-using shmtu.cas.demo.cas;
 
 // See https://aka.ms/new-console-template for more information
 

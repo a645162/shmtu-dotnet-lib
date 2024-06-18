@@ -6,14 +6,15 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AssemblyName>shmtu-dotnet-lib</AssemblyName>
-		<PackageReadmeFile>Package-ReadMe.md</PackageReadmeFile>
-		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
-		<Version>1.0.0.2</Version>
+        <PackageReadmeFile>Package-ReadMe.md</PackageReadmeFile>
+        <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+        <Version>1.0.0.3</Version>
     </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="doc\Package-ReadMe.md" Pack="true" PackagePath="\"/>
-	</ItemGroup>
+    <ItemGroup>
+        <None Include=".\README.md" Pack="true" PackagePath="\"/>
+        <None Include="doc\Package-ReadMe.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
 
     <ItemGroup>
         <Compile Remove="Shmtu\**"/>
@@ -30,7 +31,7 @@
     <ItemGroup>
         <PackageReference Include="Flurl.Http" Version="4.0.2"/>
         <PackageReference Include="HtmlAgilityPack" Version="1.11.61"/>
-        <PackageReference Include="System.Text.Json" Version="8.0.3" />
+        <PackageReference Include="System.Text.Json" Version="8.0.3"/>
     </ItemGroup>
 
 </Project>

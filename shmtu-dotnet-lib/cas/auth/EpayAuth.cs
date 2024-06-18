@@ -155,6 +155,17 @@ public class EpayAuth
         }
     }
 
+    protected virtual async Task<string> GetCaptchaResult(byte[] imageData)
+    {
+        var validateCodeResult =
+            await Captcha.OcrByRemoteTcpServerAsync(
+                "127.0.0.1", 21601,
+                imageData
+            );
+
+        return validateCodeResult;
+    }
+
     public async Task<bool> Login(string username, string password)
     {
         if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_epayCookie))
@@ -181,8 +192,8 @@ public class EpayAuth
         _loginCookie = loginCookie;
 
         // Call remote recognition interface
-        var validateCodeResult =
-            Captcha.OcrByRemoteTcpServer("127.0.0.1", 21601, imageData);
+        var validateCodeResult = await GetCaptchaResult(imageData);
+
         Captcha.SaveImageToFile(imageData);
         Console.WriteLine(validateCodeResult);
         var exprResult =

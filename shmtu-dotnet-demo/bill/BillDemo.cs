@@ -1,4 +1,5 @@
 using shmtu.cas.auth;
+using shmtu.cas.demo.cas.auth;
 using shmtu.datatype.bill;
 using shmtu.parser.bill;
 
@@ -11,7 +12,7 @@ public static class BillDemo
     public static async Task TestBill(string userId, string password)
     {
         var billHtmlCode = "";
-        // billHtmlCode = await GetBillFromNet(userId, password);
+        billHtmlCode = await GetBillFromNet(userId, password);
 
         if (string.IsNullOrEmpty(billHtmlCode))
         {
@@ -47,7 +48,7 @@ public static class BillDemo
 
     private static async Task<string> GetBillFromNet(string userId, string password)
     {
-        var epayAuth = new EpayAuth();
+        var epayAuth = new EpayAuthOverwrite();
         var isSuccess =
             await epayAuth.Login(userId, password);
         Console.WriteLine(isSuccess);
