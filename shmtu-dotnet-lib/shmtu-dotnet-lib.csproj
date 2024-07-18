@@ -8,7 +8,7 @@
         <AssemblyName>shmtu-dotnet-lib</AssemblyName>
         <PackageReadmeFile>Package-ReadMe.md</PackageReadmeFile>
         <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
-        <Version>1.0.0.3</Version>
+        <Version>1.0.0.4</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -31,7 +31,7 @@
     <ItemGroup>
         <PackageReference Include="Flurl.Http" Version="4.0.2"/>
         <PackageReference Include="HtmlAgilityPack" Version="1.11.61"/>
-        <PackageReference Include="System.Text.Json" Version="8.0.3"/>
+        <PackageReference Include="System.Text.Json" Version="8.0.4" />
     </ItemGroup>
 
 </Project>
