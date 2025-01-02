@@ -30,8 +30,8 @@
 
     <ItemGroup>
         <PackageReference Include="Flurl.Http" Version="4.0.2"/>
-        <PackageReference Include="HtmlAgilityPack" Version="1.11.61"/>
-        <PackageReference Include="System.Text.Json" Version="8.0.4" />
+        <PackageReference Include="HtmlAgilityPack" Version="1.11.72" />
+        <PackageReference Include="System.Text.Json" Version="9.0.0" />
     </ItemGroup>
 
 </Project>
