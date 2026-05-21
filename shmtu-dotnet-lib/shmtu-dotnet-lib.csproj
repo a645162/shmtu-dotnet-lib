@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>shmtu</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -9,6 +8,7 @@
         <PackageReadmeFile>Package-ReadMe.md</PackageReadmeFile>
         <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
         <Version>1.0.0.4</Version>
+        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup>
