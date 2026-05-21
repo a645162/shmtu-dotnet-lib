@@ -1,7 +1,7 @@
-﻿using shmtu;
+using shmtu;
+using shmtu.cas.captcha;
 using shmtu.cas.demo.bill;
-
-// See https://aka.ms/new-console-template for more information
+using shmtu.cas.demo.cas.captcha;
 
 Console.WriteLine("ShangHai Maritime University CAS .NET Library Demo");
 Console.WriteLine($"Library Version: {ShmtuDotnetLib.Version}");
@@ -14,14 +14,20 @@ var password = Environment.GetEnvironmentVariable("SHMTU_PASSWORD") ?? "";
 var ocrHost = Environment.GetEnvironmentVariable("SHMTU_OCR_HOST") ?? "127.0.0.1";
 var ocrPortStr = Environment.GetEnvironmentVariable("SHMTU_OCR_PORT") ?? "21601";
 var ocrPort = int.TryParse(ocrPortStr, out var port) ? port : 21601;
+var captchaMode = (Environment.GetEnvironmentVariable("SHMTU_CAPTCHA_MODE") ?? "ocr").ToLowerInvariant();
 
 Console.WriteLine($"User ID: {userId} Password: {new string('*', password.Length)}");
-Console.WriteLine($"OCR Host: {ocrHost} Port: {ocrPort}");
+Console.WriteLine($"Captcha Mode: {captchaMode}");
 
-// 测试本地TCP服务器OCR
-// await CaptchaDemo.TestLocalTcpServerOcr(ocrHost, ocrPort);
-// await CaptchaDemo.TestGetImageAndCookie();
+ICaptchaResolver resolver = captchaMode switch
+{
+    "manual" or "cli" => CliManualCaptchaResolverFactory.Create(),
+    _ => new RemoteOcrCaptchaResolver(ocrHost, ocrPort)
+};
 
-await BillDemo.TestBill(userId, password, ocrHost, ocrPort);
+if (resolver is RemoteOcrCaptchaResolver remote)
+    Console.WriteLine($"OCR Host: {remote.Host} Port: {remote.Port}");
+
+await BillDemo.TestBill(userId, password, resolver);
 
 BillItemDemo.TestBillItem();

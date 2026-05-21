@@ -90,12 +90,12 @@ public static class Captcha
             // JSESSIONID是在获取验证码的过程中设置到浏览器的Cookie中的
             // 如果不存在更新JSESSIONID操作则直接返回原本传入的Cookie
             // 如果没有传入Cookie，一般服务器会Set-Cookie返回一个新的JSESSIONID
-            // 因此一般不会出现Cookie为空的情况
-            var returnCookie =
-                response.ResponseMessage
-                    .Headers
-                    .GetValues("Set-Cookie")
-                    .FirstOrDefault() ?? cookie;
+            // 重试场景下复用已有 cookie 时，服务器可能不会再返回 Set-Cookie，此时直接沿用传入值
+            var returnCookie = cookie;
+            if (response.ResponseMessage.Headers.TryGetValues("Set-Cookie", out var setCookies))
+            {
+                returnCookie = setCookies.FirstOrDefault() ?? cookie;
+            }
 
             return (response.GetBytesAsync().Result, returnCookie);
         }

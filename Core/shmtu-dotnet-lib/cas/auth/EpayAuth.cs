@@ -14,8 +14,12 @@ public class EpayAuth
 
     private string _loginUrl = "";
 
-    public string OcrHost { get; set; } = "127.0.0.1";
-    public int OcrPort { get; set; } = 21601;
+    public ICaptchaResolver CaptchaResolver { get; }
+
+    public EpayAuth(ICaptchaResolver captchaResolver)
+    {
+        CaptchaResolver = captchaResolver;
+    }
 
     public static string GetBillUrl(int pageNo = 1, BillType type = BillType.All)
     {
@@ -158,22 +162,43 @@ public class EpayAuth
         }
     }
 
-    protected virtual async Task<string> GetCaptchaResult(byte[] imageData)
-    {
-        var validateCodeResult =
-            await Captcha.OcrByRemoteTcpServerAsync(
-                OcrHost, OcrPort,
-                imageData
-            );
+    public const int DefaultMaxCaptchaAttempts = 5;
 
-        return validateCodeResult;
+    public async Task<bool> Login(
+        string username,
+        string password,
+        int maxCaptchaAttempts = DefaultMaxCaptchaAttempts,
+        CancellationToken cancellationToken = default)
+    {
+        if (maxCaptchaAttempts < 1) maxCaptchaAttempts = 1;
+
+        for (var attempt = 1; attempt <= maxCaptchaAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var (ok, status) = await LoginOnceAsync(username, password, cancellationToken);
+            if (ok) return true;
+
+            if (status == CasAuthStatus.ValidateCodeError.ToInt() && attempt < maxCaptchaAttempts)
+            {
+                Console.WriteLine($"验证码错误，准备重试（{attempt}/{maxCaptchaAttempts}）...");
+                continue;
+            }
+
+            return false;
+        }
+
+        return false;
     }
 
-    public async Task<bool> Login(string username, string password)
+    private async Task<(bool Success, int Status)> LoginOnceAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_epayCookie))
             if (await TestLoginStatus())
-                return true;
+                return (true, CasAuthStatus.Success.ToInt());
 
         var executionString =
             await CasAuth.GetExecutionString(_loginUrl, _epayCookie);
@@ -188,19 +213,20 @@ public class EpayAuth
         if (imageData == null)
         {
             Console.WriteLine("获取验证码图片失败");
-            return false;
+            return (false, CasAuthStatus.UnrecoverableError.ToInt());
         }
 
         // Got cas login cookie
         _loginCookie = loginCookie;
 
-        // Call remote recognition interface
-        var validateCodeResult = await GetCaptchaResult(imageData);
+        // Resolve captcha via injected strategy (remote OCR / manual input / custom)
+        var captchaAnswer = await CaptchaResolver.ResolveAsync(imageData, cancellationToken);
 
-        Captcha.SaveImageToFile(imageData);
-        Console.WriteLine(validateCodeResult);
-        var exprResult =
-            Captcha.GetExprResultByExprString(validateCodeResult);
+        Console.WriteLine(captchaAnswer.Value);
+
+        var exprResult = captchaAnswer.Kind == CaptchaAnswerKind.Expression
+            ? Captcha.GetExprResultByExprString(captchaAnswer.Value)
+            : captchaAnswer.Value.Trim();
 
         var resultCas =
             await CasAuth.CasLogin(
@@ -214,7 +240,7 @@ public class EpayAuth
         if (resultCas.Item1 != CasAuthStatus.Redirect.ToInt())
         {
             Console.WriteLine($"程序出错，状态码：{resultCas.Item1}");
-            return false;
+            return (false, resultCas.Item1);
         }
 
         _loginCookie = resultCas.Item3;
@@ -227,14 +253,13 @@ public class EpayAuth
         {
             Console.WriteLine("Login Ok,but cannot redirect to bill page.");
             Console.WriteLine($"Status code：{resultRedirect.Item1}");
-            return false;
+            return (false, resultRedirect.Item1);
         }
-
-        // var finalTestStatus = await TestLoginStatus();
 
         var resultBill =
             await GetBill(cookie: _epayCookie);
 
-        return resultBill.Item1 == CasAuthStatus.Success.ToInt();
+        var success = resultBill.Item1 == CasAuthStatus.Success.ToInt();
+        return (success, resultBill.Item1);
     }
 }
