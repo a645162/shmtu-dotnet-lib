@@ -9,10 +9,10 @@ public static class BillDemo
 {
     private const string HtmlFilePath = "bill.html";
 
-    public static async Task TestBill(string userId, string password)
+    public static async Task TestBill(string userId, string password, string ocrHost = "127.0.0.1", int ocrPort = 21601)
     {
         var billHtmlCode = "";
-        billHtmlCode = await GetBillFromNet(userId, password);
+        billHtmlCode = await GetBillFromNet(userId, password, ocrHost, ocrPort);
 
         if (string.IsNullOrEmpty(billHtmlCode))
         {
@@ -46,9 +46,13 @@ public static class BillDemo
         Console.WriteLine();
     }
 
-    private static async Task<string> GetBillFromNet(string userId, string password)
+    private static async Task<string> GetBillFromNet(string userId, string password, string ocrHost, int ocrPort)
     {
-        var epayAuth = new EpayAuthOverwrite();
+        var epayAuth = new EpayAuthOverwrite
+        {
+            OcrHost = ocrHost,
+            OcrPort = ocrPort
+        };
         var isSuccess =
             await epayAuth.Login(userId, password);
         Console.WriteLine(isSuccess);

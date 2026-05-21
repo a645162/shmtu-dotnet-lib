@@ -14,6 +14,9 @@ public class EpayAuth
 
     private string _loginUrl = "";
 
+    public string OcrHost { get; set; } = "127.0.0.1";
+    public int OcrPort { get; set; } = 21601;
+
     public static string GetBillUrl(int pageNo = 1, BillType type = BillType.All)
     {
         return GetBillUrl(
@@ -159,7 +162,7 @@ public class EpayAuth
     {
         var validateCodeResult =
             await Captcha.OcrByRemoteTcpServerAsync(
-                "127.0.0.1", 21601,
+                OcrHost, OcrPort,
                 imageData
             );
 
