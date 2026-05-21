@@ -12,10 +12,10 @@ if __name__ == "__main__":
     nuget_api_key = os.environ["NUGET_API_KEY"]
 
     cmd = (
-        f"nuget push "
+        f"dotnet nuget push "
         f"\"Output/shmtu-dotnet-lib.{version}.nupkg\" "
-        f"\"{nuget_api_key}\" "
-        f"-Source https://api.nuget.org/v3/index.json"
+        f"--api-key \"{nuget_api_key}\" "
+        f"--source https://api.nuget.org/v3/index.json"
     )
 
     os.system(cmd)
