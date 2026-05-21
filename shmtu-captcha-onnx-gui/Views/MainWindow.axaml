@@ -1,0 +1,134 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:shmtu.captcha.onnx.gui.ViewModels"
+        mc:Ignorable="d"
+        x:Class="shmtu.captcha.onnx.gui.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1100" Height="720"
+        Title="SHMTU Captcha ONNX OCR — Avalonia Demo">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <DockPanel Margin="12">
+
+        <Border DockPanel.Dock="Top" Padding="10" Margin="0,0,0,8"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                CornerRadius="6">
+            <StackPanel Orientation="Vertical" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Model dir:" VerticalAlignment="Center"/>
+                    <TextBox Text="{Binding ModelDirectory}" Width="600"/>
+                    <Button Content="Check / Download Models"
+                            Command="{Binding EnsureModelsCommand}"/>
+                    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource SystemAccentColorBrush}"/>
+                </StackPanel>
+                <ProgressBar Minimum="0" Maximum="100" Height="6"
+                             Value="{Binding DownloadProgress}"/>
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Padding="8"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                CornerRadius="6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                           Text="{Binding StatusMessage}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center">
+                        <Run Text="Items: "/>
+                        <Run Text="{Binding Items.Count, Mode=OneWay}"/>
+                    </TextBlock>
+                    <TextBlock VerticalAlignment="Center">
+                        <Run Text="Avg: "/>
+                        <Run Text="{Binding AverageMs, StringFormat={}{0:F1} ms}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid ColumnDefinitions="280,*">
+
+            <Border Grid.Column="0" Padding="8" Margin="0,0,8,0"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                    CornerRadius="6">
+                <StackPanel Orientation="Vertical" Spacing="8">
+                    <TextBlock Text="Add images" FontWeight="Bold"/>
+                    <Button Content="Select local file(s)..." HorizontalAlignment="Stretch"
+                            Command="{Binding SelectFilesCommand}"/>
+
+                    <Separator Margin="0,8,0,8"/>
+
+                    <TextBlock Text="Load from URL"/>
+                    <TextBox Text="{Binding UrlInput}" PlaceholderText="https://.../captcha-id"/>
+                    <Button Content="Load URL" HorizontalAlignment="Stretch"
+                            Command="{Binding LoadUrlCommand}"/>
+
+                    <Separator Margin="0,8,0,8"/>
+
+                    <Button Content="Recognize All" HorizontalAlignment="Stretch"
+                            Background="{DynamicResource SystemAccentColorBrush}"
+                            Foreground="White"
+                            Command="{Binding RecognizeAllCommand}"/>
+                    <Button Content="Clear List" HorizontalAlignment="Stretch"
+                            Command="{Binding ClearCommand}"/>
+
+                    <Separator Margin="0,8,0,8"/>
+
+                    <TextBlock Text="Tips:" FontWeight="Bold"/>
+                    <TextBlock Text="• Cross-platform via ImageSharp + ONNX Runtime."
+                               TextWrapping="Wrap" FontSize="11"/>
+                    <TextBlock Text="• Models are downloaded to the directory above."
+                               TextWrapping="Wrap" FontSize="11"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Padding="8"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                    CornerRadius="6">
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:CaptchaItemViewModel">
+                                <Border Padding="8" Margin="0,0,0,8"
+                                        Background="{DynamicResource SystemControlBackgroundAltMediumBrush}"
+                                        CornerRadius="4">
+                                    <Grid ColumnDefinitions="120,*,Auto">
+                                        <Border Grid.Column="0" Width="110" Height="48"
+                                                Background="White" CornerRadius="3">
+                                            <Image Source="{Binding Preview}" Stretch="Uniform"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                                                    VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Text="{Binding Source}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       FontSize="11" Opacity="0.7"/>
+                                            <TextBlock Text="{Binding Expr}"
+                                                       FontSize="16" FontWeight="Bold"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right" Spacing="2">
+                                            <TextBlock Text="{Binding Status}"
+                                                       HorizontalAlignment="Right"
+                                                       FontSize="11" Opacity="0.7"/>
+                                            <TextBlock HorizontalAlignment="Right" FontSize="11">
+                                                <Run Text="{Binding ElapsedMs}"/>
+                                                <Run Text=" ms"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+
+    </DockPanel>
+</Window>
