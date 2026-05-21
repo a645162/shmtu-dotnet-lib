@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <RootNamespace>shmtu.captcha.onnx.tests</RootNamespace>
-        <AssemblyName>shmtu-captcha-onnx-tests</AssemblyName>
+        <AssemblyName>shmtu-ocr-onnx-tests</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
@@ -18,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\shmtu-captcha-onnx-lib\shmtu-captcha-onnx-lib.csproj"/>
+        <ProjectReference Include="..\shmtu-ocr-onnx-lib\shmtu-ocr-onnx-lib.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -37,14 +37,16 @@ jobs:
       - name: (.Net)Build
         run: dotnet build --no-restore --configuration Release
       - name: (.Net)Test
-        run: dotnet test --no-build --verbosity normal
+        # CI 跳过 OCR 类目测试：ONNX 推理在 GitHub runner 上耗算力 + 远端 OCR 服务不稳定。
+        # 本地手动跑用：dotnet test （无 --filter）
+        run: dotnet test --no-build --configuration Release --verbosity normal --filter "Category!=Ocr"
 
       - name: (.Net)Pack
         run: |
           dotnet pack \
             --configuration Release \
             --output ./Output \
-            ./shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
+            ./Core/shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
 
       - name: (.Net)Publish
         env:

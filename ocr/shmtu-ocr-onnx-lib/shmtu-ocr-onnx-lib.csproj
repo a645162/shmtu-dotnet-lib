@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <RootNamespace>shmtu.captcha.onnx</RootNamespace>
-        <AssemblyName>shmtu-captcha-onnx-lib</AssemblyName>
+        <AssemblyName>shmtu-ocr-onnx-lib</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TargetFrameworks>net8.0;net10.0</TargetFrameworks>

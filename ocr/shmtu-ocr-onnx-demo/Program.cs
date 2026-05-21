@@ -2,36 +2,36 @@ using System.Diagnostics;
 using shmtu.captcha.onnx;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
-Console.WriteLine($"SHMTU CAS Captcha ONNX OCR - CLI Demo (lib v{CaptchaOcrLib.Version})");
+Console.WriteLine($"上海海事大学验证码 OCR - 命令行演示 (库版本 v{CaptchaOcrLib.Version})");
 
 var modelDir = args.Length >= 2 ? args[1] : AppContext.BaseDirectory;
 using var ocr = new CasOcr(modelDir);
 
-Console.WriteLine($"Model directory: {ocr.ModelDirectoryPath}");
+Console.WriteLine($"模型目录：{ocr.ModelDirectoryPath}");
 
 if (!ocr.CheckModelIsExist())
 {
-    Console.WriteLine("Models missing, downloading...");
+    Console.WriteLine("模型缺失，开始下载...");
     var lastReported = -1;
     var progress = new Progress<float>(p =>
     {
         var rounded = (int)p;
         if (rounded == lastReported) return;
         lastReported = rounded;
-        Console.Write($"\rDownloading: {rounded,3}%");
+        Console.Write($"\r下载进度：{rounded,3}%");
     });
     var ok = await ocr.EnsureModelsAsync(progress);
     Console.WriteLine();
     if (!ok)
     {
-        Console.Error.WriteLine("Failed to download models.");
+        Console.Error.WriteLine("模型下载失败。");
         return 1;
     }
 }
 
 if (!ocr.LoadModel())
 {
-    Console.Error.WriteLine("Failed to load models.");
+    Console.Error.WriteLine("模型加载失败。");
     return 1;
 }
 
@@ -40,14 +40,14 @@ if (args.Length >= 1)
     var path = args[0];
     if (!File.Exists(path))
     {
-        Console.Error.WriteLine($"Image not found: {path}");
+        Console.Error.WriteLine($"找不到图片文件：{path}");
         return 1;
     }
 
     var sw = Stopwatch.StartNew();
     var r = ocr.PredictValidateCode(path);
     sw.Stop();
-    Console.WriteLine($"[{Path.GetFileName(path)}] {r.Expr}  (elapsed {sw.ElapsedMilliseconds} ms)");
+    Console.WriteLine($"[{Path.GetFileName(path)}] {r.Expr}  （耗时 {sw.ElapsedMilliseconds} 毫秒）");
     return 0;
 }
 
@@ -64,11 +64,11 @@ if (Directory.Exists(samplesDir))
 
     if (files.Length == 0)
     {
-        Console.WriteLine($"No images in {samplesDir}.");
+        Console.WriteLine($"{samplesDir} 目录下未找到任何图片。");
     }
     else
     {
-        Console.WriteLine($"Batch testing {files.Length} image(s) in {samplesDir}:");
+        Console.WriteLine($"批量识别 {files.Length} 张图片（{samplesDir}）：");
         var totalMs = 0L;
         foreach (var f in files)
         {
@@ -76,17 +76,17 @@ if (Directory.Exists(samplesDir))
             var r = ocr.PredictValidateCode(f);
             sw.Stop();
             totalMs += sw.ElapsedMilliseconds;
-            Console.WriteLine($"  [{Path.GetFileName(f),-32}] {r.Expr}  ({sw.ElapsedMilliseconds} ms)");
+            Console.WriteLine($"  [{Path.GetFileName(f),-32}] {r.Expr}  （{sw.ElapsedMilliseconds} 毫秒）");
         }
-        Console.WriteLine($"Average: {(double)totalMs / files.Length:F1} ms / image");
+        Console.WriteLine($"平均：{(double)totalMs / files.Length:F1} 毫秒 / 张");
     }
 }
 else
 {
     Console.WriteLine();
-    Console.WriteLine("Usage:");
-    Console.WriteLine("  shmtu-captcha-onnx-cli <imagePath> [modelDir]");
-    Console.WriteLine("Or put sample images under ./samples/ for batch testing.");
+    Console.WriteLine("用法：");
+    Console.WriteLine("  shmtu-ocr-onnx-demo <图片路径> [模型目录]");
+    Console.WriteLine("或者将示例图片放置在 ./samples/ 目录下，直接运行即可批量识别。");
 }
 
 return 0;

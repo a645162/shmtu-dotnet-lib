@@ -5,6 +5,9 @@ using Xunit.Abstractions;
 
 namespace shmtu.captcha.onnx.tests;
 
+// CI 跳过整个 OCR 类目：ONNX 推理耗算力 + 远端 OCR 不稳定。
+// 在 GitHub Actions 用 `dotnet test --filter "Category!=Ocr"` 一次性排除。
+[Trait("Category", "Ocr")]
 public sealed class OcrConsistencyTests : IAsyncLifetime, IDisposable
 {
     private readonly ITestOutputHelper _out;

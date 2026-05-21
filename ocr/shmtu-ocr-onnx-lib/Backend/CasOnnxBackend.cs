@@ -65,7 +65,7 @@ public sealed class CasOnnxBackend : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error downloading models: {ex.Message}");
+            Console.WriteLine($"模型下载出错：{ex.Message}");
             return false;
         }
         finally

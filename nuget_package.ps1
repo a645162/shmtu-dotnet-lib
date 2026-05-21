@@ -7,7 +7,7 @@ dotnet restore
 dotnet build `
 	--no-restore `
 	--configuration Release `
-	./shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
+	./Core/shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
 
 # Remove Old Package
 Remove-Item -Path ./Output/shmtu-dotnet-lib.*.nupkg -ErrorAction Ignore
@@ -16,7 +16,7 @@ Remove-Item -Path ./Output/shmtu-dotnet-lib.*.nupkg -ErrorAction Ignore
 dotnet pack `
 	--configuration Release `
 	--output ./Output `
-	./shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
+	./Core/shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
 
 Write-Host "NUGET_KEY: $env:NUGET_KEY"
 
