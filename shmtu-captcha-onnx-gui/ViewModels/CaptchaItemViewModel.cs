@@ -8,7 +8,7 @@ public sealed class CaptchaItemViewModel : ObservableObject
     private Bitmap? _preview;
     private string _expr = "";
     private long _elapsedMs;
-    private string _status = "Pending";
+    private string _status = "待识别";
 
     public string Source { get => _source; set => SetField(ref _source, value); }
     public Bitmap? Preview { get => _preview; set => SetField(ref _preview, value); }

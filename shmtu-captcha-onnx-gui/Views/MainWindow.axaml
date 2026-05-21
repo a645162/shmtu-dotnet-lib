@@ -6,8 +6,8 @@
         mc:Ignorable="d"
         x:Class="shmtu.captcha.onnx.gui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="1100" Height="720"
-        Title="SHMTU Captcha ONNX OCR — Avalonia Demo">
+        Width="980" Height="720" MinWidth="820" MinHeight="600"
+        Title="上海海事大学统一认证平台 验证码 OCR (ONNX · Avalonia)">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -15,119 +15,188 @@
 
     <DockPanel Margin="12">
 
-        <Border DockPanel.Dock="Top" Padding="10" Margin="0,0,0,8"
+        <!-- 顶部：模型状态 + 下载进度 -->
+        <Border DockPanel.Dock="Top" Padding="10" Margin="0,0,0,10"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
                 CornerRadius="6">
             <StackPanel Orientation="Vertical" Spacing="6">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Model dir:" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding ModelDirectory}" Width="600"/>
-                    <Button Content="Check / Download Models"
-                            Command="{Binding EnsureModelsCommand}"/>
-                    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                               Foreground="{DynamicResource SystemAccentColorBrush}"/>
+                    <TextBlock Text="模型目录：" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBox Text="{Binding ModelDirectory}" Width="520" VerticalAlignment="Center"/>
+                    <Button Content="检查 / 下载模型"
+                            Command="{Binding EnsureModelsCommand}"
+                            VerticalAlignment="Center"/>
+                    <Border Padding="8,3" CornerRadius="10" VerticalAlignment="Center"
+                            Background="{DynamicResource SystemAccentColorBrush}">
+                        <TextBlock Text="{Binding ModelStatusText}" Foreground="White" FontSize="12"/>
+                    </Border>
                 </StackPanel>
                 <ProgressBar Minimum="0" Maximum="100" Height="6"
                              Value="{Binding DownloadProgress}"/>
             </StackPanel>
         </Border>
 
-        <Border DockPanel.Dock="Bottom" Padding="8"
+        <!-- 底部：状态栏 -->
+        <Border DockPanel.Dock="Bottom" Padding="8" Margin="0,10,0,0"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
                 CornerRadius="6">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" VerticalAlignment="Center"
-                           Text="{Binding StatusMessage}"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
-                    <TextBlock VerticalAlignment="Center">
-                        <Run Text="Items: "/>
-                        <Run Text="{Binding Items.Count, Mode=OneWay}"/>
-                    </TextBlock>
-                    <TextBlock VerticalAlignment="Center">
-                        <Run Text="Avg: "/>
-                        <Run Text="{Binding AverageMs, StringFormat={}{0:F1} ms}"/>
-                    </TextBlock>
-                </StackPanel>
-            </Grid>
+            <TextBlock Text="{Binding StatusMessage}" FontSize="13"/>
         </Border>
 
-        <Grid ColumnDefinitions="280,*">
+        <!-- 中部：左大图 + 大字结果，右按钮列；下方可折叠批量区 -->
+        <Grid RowDefinitions="*,Auto">
 
-            <Border Grid.Column="0" Padding="8" Margin="0,0,8,0"
-                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
-                    CornerRadius="6">
-                <StackPanel Orientation="Vertical" Spacing="8">
-                    <TextBlock Text="Add images" FontWeight="Bold"/>
-                    <Button Content="Select local file(s)..." HorizontalAlignment="Stretch"
-                            Command="{Binding SelectFilesCommand}"/>
+            <Grid Grid.Row="0" ColumnDefinitions="*,240">
 
-                    <Separator Margin="0,8,0,8"/>
+                <!-- 左：图片预览 + 大字结果 -->
+                <Border Grid.Column="0" Padding="10" Margin="0,0,10,0"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                        CornerRadius="6">
+                    <DockPanel>
+                        <!-- 大字结果（底部） -->
+                        <Border DockPanel.Dock="Bottom" Padding="14,10" Margin="0,10,0,0"
+                                Background="White" CornerRadius="6">
+                            <StackPanel Orientation="Vertical" Spacing="2">
+                                <TextBlock Text="识别结果"
+                                           FontSize="12" Opacity="0.6"/>
+                                <TextBlock Text="{Binding ResultExpr}"
+                                           FontSize="34" FontWeight="Bold"
+                                           Foreground="#1976D2"
+                                           TextWrapping="Wrap"/>
+                                <TextBlock FontSize="11" Opacity="0.6">
+                                    <Run Text="用时："/>
+                                    <Run Text="{Binding CurrentElapsedMs}"/>
+                                    <Run Text=" 毫秒"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <!-- 来源 -->
+                        <TextBlock DockPanel.Dock="Bottom" Margin="2,6,2,0"
+                                   Text="{Binding CurrentSource}"
+                                   FontSize="11" Opacity="0.7"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <!-- 图片预览 -->
+                        <Border Background="White" CornerRadius="4">
+                            <Image Source="{Binding CurrentPreview}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </DockPanel>
+                </Border>
 
-                    <TextBlock Text="Load from URL"/>
-                    <TextBox Text="{Binding UrlInput}" PlaceholderText="https://.../captcha-id"/>
-                    <Button Content="Load URL" HorizontalAlignment="Stretch"
-                            Command="{Binding LoadUrlCommand}"/>
+                <!-- 右：操作按钮列 -->
+                <Border Grid.Column="1" Padding="10"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                        CornerRadius="6">
+                    <StackPanel Orientation="Vertical" Spacing="10">
 
-                    <Separator Margin="0,8,0,8"/>
+                        <TextBlock Text="获取图片" FontWeight="Bold"/>
+                        <TextBox Text="{Binding CaptchaUrl}"
+                                 PlaceholderText="验证码 URL"/>
+                        <Button Content="下载验证码"
+                                HorizontalAlignment="Stretch"
+                                FontSize="16"
+                                Command="{Binding DownloadFromCasCommand}"/>
+                        <Button Content="打开本地图片"
+                                HorizontalAlignment="Stretch"
+                                FontSize="16"
+                                Command="{Binding OpenLocalCommand}"/>
 
-                    <Button Content="Recognize All" HorizontalAlignment="Stretch"
-                            Background="{DynamicResource SystemAccentColorBrush}"
-                            Foreground="White"
-                            Command="{Binding RecognizeAllCommand}"/>
-                    <Button Content="Clear List" HorizontalAlignment="Stretch"
-                            Command="{Binding ClearCommand}"/>
+                        <Separator Margin="0,6,0,6"/>
 
-                    <Separator Margin="0,8,0,8"/>
+                        <TextBlock Text="识别" FontWeight="Bold"/>
+                        <Button Content="▶ OCR 识别"
+                                HorizontalAlignment="Stretch"
+                                FontSize="20" FontWeight="Bold"
+                                Padding="0,12"
+                                Background="{DynamicResource SystemAccentColorBrush}"
+                                Foreground="White"
+                                Command="{Binding RecognizeCommand}"/>
 
-                    <TextBlock Text="Tips:" FontWeight="Bold"/>
-                    <TextBlock Text="• Cross-platform via ImageSharp + ONNX Runtime."
-                               TextWrapping="Wrap" FontSize="11"/>
-                    <TextBlock Text="• Models are downloaded to the directory above."
-                               TextWrapping="Wrap" FontSize="11"/>
-                </StackPanel>
-            </Border>
+                        <Separator Margin="0,6,0,6"/>
 
-            <Border Grid.Column="1" Padding="8"
-                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
-                    CornerRadius="6">
-                <ScrollViewer>
-                    <ItemsControl ItemsSource="{Binding Items}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:CaptchaItemViewModel">
-                                <Border Padding="8" Margin="0,0,0,8"
-                                        Background="{DynamicResource SystemControlBackgroundAltMediumBrush}"
-                                        CornerRadius="4">
-                                    <Grid ColumnDefinitions="120,*,Auto">
-                                        <Border Grid.Column="0" Width="110" Height="48"
-                                                Background="White" CornerRadius="3">
-                                            <Image Source="{Binding Preview}" Stretch="Uniform"/>
+                        <TextBlock Text="批量" FontWeight="Bold"/>
+                        <Button Content="加入批量列表"
+                                HorizontalAlignment="Stretch"
+                                Command="{Binding AddToBatchCommand}"/>
+
+                        <Separator Margin="0,6,0,6"/>
+
+                        <Button Content="释放模型"
+                                HorizontalAlignment="Stretch"
+                                Command="{Binding ReleaseModelCommand}"/>
+
+                        <TextBlock Text="Author: Haomin Kong"
+                                   FontSize="10" Opacity="0.5"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- 下方：可展开的批量识别区 -->
+            <Expander Grid.Row="1" Margin="0,10,0,0" Header="批量识别 / 批量比对">
+                <Border Padding="10"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                        CornerRadius="6">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <Button Content="选择多张本地图片..."
+                                    Command="{Binding SelectFilesCommand}"/>
+                            <Button Content="批量识别"
+                                    Background="{DynamicResource SystemAccentColorBrush}"
+                                    Foreground="White"
+                                    Command="{Binding RecognizeAllCommand}"/>
+                            <Button Content="清空列表"
+                                    Command="{Binding ClearCommand}"/>
+                            <TextBlock VerticalAlignment="Center" Opacity="0.7">
+                                <Run Text="共 "/>
+                                <Run Text="{Binding Items.Count, Mode=OneWay}"/>
+                                <Run Text=" 项 · 平均 "/>
+                                <Run Text="{Binding AverageMs, StringFormat={}{0:F1}}"/>
+                                <Run Text=" 毫秒"/>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <ScrollViewer MaxHeight="220">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:CaptchaItemViewModel">
+                                        <Border Padding="6" Margin="0,0,0,6"
+                                                Background="{DynamicResource SystemControlBackgroundAltMediumBrush}"
+                                                CornerRadius="4">
+                                            <Grid ColumnDefinitions="120,*,Auto">
+                                                <Border Grid.Column="0" Width="110" Height="44"
+                                                        Background="White" CornerRadius="3">
+                                                    <Image Source="{Binding Preview}" Stretch="Uniform"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                                                            VerticalAlignment="Center" Spacing="2">
+                                                    <TextBlock Text="{Binding Source}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               FontSize="11" Opacity="0.7"/>
+                                                    <TextBlock Text="{Binding Expr}"
+                                                               FontSize="16" FontWeight="Bold"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                                            HorizontalAlignment="Right" Spacing="2">
+                                                    <TextBlock Text="{Binding Status}"
+                                                               HorizontalAlignment="Right"
+                                                               FontSize="11" Opacity="0.7"/>
+                                                    <TextBlock HorizontalAlignment="Right" FontSize="11">
+                                                        <Run Text="{Binding ElapsedMs}"/>
+                                                        <Run Text=" ms"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Grid>
                                         </Border>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0"
-                                                    VerticalAlignment="Center" Spacing="2">
-                                            <TextBlock Text="{Binding Source}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       FontSize="11" Opacity="0.7"/>
-                                            <TextBlock Text="{Binding Expr}"
-                                                       FontSize="16" FontWeight="Bold"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right" Spacing="2">
-                                            <TextBlock Text="{Binding Status}"
-                                                       HorizontalAlignment="Right"
-                                                       FontSize="11" Opacity="0.7"/>
-                                            <TextBlock HorizontalAlignment="Right" FontSize="11">
-                                                <Run Text="{Binding ElapsedMs}"/>
-                                                <Run Text=" ms"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Border>
-
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Expander>
         </Grid>
 
     </DockPanel>
