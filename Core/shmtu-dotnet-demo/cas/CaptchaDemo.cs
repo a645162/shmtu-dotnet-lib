@@ -1,3 +1,4 @@
+using shmtu.cas.auth.common;
 using shmtu.cas.captcha;
 
 namespace shmtu.cas.demo.cas;
@@ -21,7 +22,7 @@ public static class CaptchaDemo
         var executionTime = DateTime.Now - startTime;
         Console.WriteLine($"OCR执行时间: {executionTime.TotalMilliseconds} 毫秒");
 
-        var exprResult = Captcha.GetExprResultByExprString(validateCode);
+        var exprResult = Captcha.GetExprResult(validateCode);
         Console.WriteLine(validateCode);
         Console.WriteLine(exprResult);
 
@@ -30,14 +31,15 @@ public static class CaptchaDemo
 
     public static async Task TestGetImageAndCookie()
     {
-        var imageData = await Captcha.GetImageDataFromUrlUsingGet();
-        if (imageData.Item1 == null)
+        using var client = new CasHttpClient();
+        var imageData = await Captcha.FetchCaptcha(client);
+        if (imageData.Length == 0)
         {
             Console.WriteLine("获取验证码图片失败");
             return;
         }
 
-        Captcha.SaveImageToFile(imageData.Item1);
-        Console.WriteLine(imageData.Item2);
+        Captcha.SaveImageToFile(imageData);
+        Console.WriteLine($"CookieContainer 中已记录 {client.CookieContainer.Count} 条 cookie");
     }
 }

@@ -1,265 +1,181 @@
 using System.Net;
-using Flurl.Http;
 using shmtu.cas.auth.common;
 using shmtu.cas.captcha;
 using shmtu.datatype.bill;
 
 namespace shmtu.cas.auth;
 
-public class EpayAuth
+/// <summary>
+/// ePay（一卡通）账单的登录与拉取。对齐 Rust 的 <c>cas::epay::EpayAuth</c>。
+/// 提供 4 个原子方法：ProbeLoginAsync / PrepareChallengeAsync / SubmitLoginAsync / TestLoginStatusAsync。
+/// 重试循环由调用方负责（参见 BillDemo）。
+/// </summary>
+public sealed class EpayAuth : IDisposable
 {
-    private string _epayCookie = "";
-    private string _htmlCode = "";
-    private string _loginCookie = "";
+    public const string EpayBillUrl = "https://ecard.shmtu.edu.cn/epay/consume/query";
 
-    private string _loginUrl = "";
-
+    public CasHttpClient HttpClient { get; }
     public ICaptchaResolver CaptchaResolver { get; }
 
+    private string? _loginUrl;
+    private readonly bool _ownsHttpClient;
+
     public EpayAuth(ICaptchaResolver captchaResolver)
+        : this(captchaResolver, new CasHttpClient(), ownsHttpClient: true)
+    {
+    }
+
+    public EpayAuth(ICaptchaResolver captchaResolver, CasHttpClient httpClient)
+        : this(captchaResolver, httpClient, ownsHttpClient: false)
+    {
+    }
+
+    private EpayAuth(ICaptchaResolver captchaResolver, CasHttpClient httpClient, bool ownsHttpClient)
     {
         CaptchaResolver = captchaResolver;
+        HttpClient = httpClient;
+        _ownsHttpClient = ownsHttpClient;
+    }
+
+    public void Dispose()
+    {
+        if (_ownsHttpClient) HttpClient.Dispose();
     }
 
     public static string GetBillUrl(int pageNo = 1, BillType type = BillType.All)
-    {
-        return GetBillUrl(
-            pageNo.ToString(),
-            type
-        );
-    }
+        => GetBillUrl(pageNo.ToString(), type);
 
     public static string GetBillUrl(string pageNoString = "1", BillType type = BillType.All)
-    {
-        var tabNoString = "1";
-        switch (type)
-        {
-            case BillType.All:
-                tabNoString = "1";
-                break;
-            case BillType.NotPaid:
-                tabNoString = "2";
-                break;
-            case BillType.Success:
-                tabNoString = "3";
-                break;
-            case BillType.Failure:
-                tabNoString = "4";
-                break;
-        }
-
-        return GetBillUrl(
-            pageNoString,
-            tabNoString
-        );
-    }
+        => GetBillUrl(pageNoString, GetTabNo(type));
 
     public static string GetBillUrl(string pageNoString = "1", string tabNoString = "1")
+        => $"{EpayBillUrl}?pageNo={pageNoString}&tabNo={tabNoString}";
+
+    public static string GetTabNo(BillType type) => type switch
     {
-        // https://ecard.shmtu.edu.cn/epay/consume/query?pageNo=1&tabNo=1
-        return $"https://ecard.shmtu.edu.cn/epay/consume/query?pageNo={pageNoString}&tabNo={tabNoString}";
+        BillType.All => "1",
+        BillType.NotPaid => "2",
+        BillType.Success => "3",
+        BillType.Failure => "4",
+        _ => "1",
+    };
+
+    /// <summary>
+    /// 探测当前是否已登录。对齐 Rust 的 <c>probe_login</c>。
+    /// </summary>
+    public async Task<LoginProbe> ProbeLoginAsync(CancellationToken cancellationToken = default)
+    {
+        var url = GetBillUrl(1, BillType.All);
+        using var response = await HttpClient.HttpClient.GetAsync(url, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.OK)
+            return new LoginProbe.AlreadyLoggedIn();
+
+        if (response.StatusCode == HttpStatusCode.Redirect)
+        {
+            var location = response.Headers.Location?.ToString() ?? "";
+            if (string.IsNullOrEmpty(location))
+                throw new InvalidOperationException("重定向URL为空");
+
+            _loginUrl = location;
+            return new LoginProbe.NeedLogin(location);
+        }
+
+        throw new HttpRequestException(
+            $"探测登录状态失败，状态码: {(int)response.StatusCode}");
     }
 
-    public async Task<(int, string, string)> GetBill(
-        string url = "https://ecard.shmtu.edu.cn/epay/consume/query?pageNo=1&tabNo=1",
-        string cookie = ""
-    )
+    /// <summary>
+    /// 获取 execution 令牌 + 验证码图片，交给 <see cref="CaptchaResolver"/> 解。
+    /// 对齐 Rust 的 <c>prepare_challenge</c>。
+    /// </summary>
+    public async Task<LoginChallenge> PrepareChallengeAsync(CancellationToken cancellationToken = default)
     {
-        var finalCookie =
-            string.IsNullOrEmpty(cookie) ? _epayCookie : cookie;
+        if (string.IsNullOrEmpty(_loginUrl))
+            throw new InvalidOperationException("尚未探测登录状态，请先调用 ProbeLoginAsync");
 
-        try
-        {
-            var request = url
-                .WithHeader("Cookie", finalCookie)
-                .WithAutoRedirect(false)
-                .AllowHttpStatus([302]);
-            var response = await request.GetAsync();
-
-            var responseCodeInt = response.StatusCode;
-            var responseCode = (HttpStatusCode)responseCodeInt;
-
-            if (responseCode == HttpStatusCode.OK)
-            {
-                _htmlCode =
-                    response.ResponseMessage.Content.ReadAsStringAsync().Result.Trim();
-                if (_htmlCode.Length > 0) _htmlCode += "\n";
-
-                return (CasAuthStatus.Success.ToInt(), _htmlCode, cookie);
-            }
-
-            if (responseCode == HttpStatusCode.Redirect)
-            {
-                if (response.ResponseMessage.Headers.Location == null)
-                {
-                    Console.WriteLine("Location is null");
-                    return (CasAuthStatus.UnrecoverableError.ToInt(), "", "");
-                }
-
-                var location = response.ResponseMessage.Headers.Location.ToString();
-
-                // Get all "Set-Cookie" Header
-                var setCookieHeaders =
-                    response.ResponseMessage.Headers.GetValues("Set-Cookie").ToList();
-
-                var newCookie = cookie;
-                foreach (
-                    var currentSetCookie in setCookieHeaders
-                        .Where(
-                            currentSetCookie =>
-                                currentSetCookie.Contains("JSESSIONID")
-                        )
-                )
-                {
-                    newCookie = currentSetCookie.Trim();
-                    break;
-                }
-
-                _epayCookie = newCookie;
-
-                return (CasAuthStatus.Redirect.ToInt(), location, newCookie);
-            }
-
-            return (responseCodeInt, "", "");
-        }
-        catch (Exception ex)
-        {
-            // Handle exception
-            return (CasAuthStatus.UnrecoverableError.ToInt(), ex.Message, "");
-        }
+        var execution = await CasAuth.GetExecutionString(HttpClient, _loginUrl, cancellationToken);
+        var captchaImage = await Captcha.FetchCaptcha(HttpClient, cancellationToken);
+        return new LoginChallenge(execution, captchaImage);
     }
 
-    public async Task<bool> TestLoginStatus()
-    {
-        var resultBill =
-            await GetBill(cookie: _epayCookie);
-
-        switch (resultBill.Item1)
-        {
-            case 200:
-                // OK
-                return true;
-            case 302:
-                _loginUrl = resultBill.Item2;
-                var newCookie = resultBill.Item3;
-
-                if (newCookie.Length <= 0) return false;
-
-                // Remove unused cookie
-                // var spiltList = newCookie.Split(";");
-                // foreach (var item in spiltList)
-                // {
-                //     if (!item.Contains("JSESSIONID")) continue;
-                //     newCookie = item;
-                //     break;
-                // }
-
-                _epayCookie = newCookie;
-
-                return false;
-            default:
-                return false;
-        }
-    }
-
-    public const int DefaultMaxCaptchaAttempts = 5;
-
-    public async Task<bool> Login(
+    /// <summary>
+    /// 完整的"准备挑战 + 让 resolver 解 + 提交登录"流程，便于调用方一行搞定。
+    /// </summary>
+    public async Task<LoginSubmitResult> SubmitLoginAsync(
         string username,
         string password,
-        int maxCaptchaAttempts = DefaultMaxCaptchaAttempts,
         CancellationToken cancellationToken = default)
     {
-        if (maxCaptchaAttempts < 1) maxCaptchaAttempts = 1;
+        var challenge = await PrepareChallengeAsync(cancellationToken);
+        var answer = await CaptchaResolver.ResolveAsync(challenge.CaptchaImage, cancellationToken);
+        var validateCode = answer.Kind == CaptchaAnswerKind.Expression
+            ? Captcha.GetExprResult(answer.Value)
+            : answer.Value.Trim();
 
-        for (var attempt = 1; attempt <= maxCaptchaAttempts; attempt++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var (ok, status) = await LoginOnceAsync(username, password, cancellationToken);
-            if (ok) return true;
-
-            if (status == CasAuthStatus.ValidateCodeError.ToInt() && attempt < maxCaptchaAttempts)
-            {
-                Console.WriteLine($"验证码错误，准备重试（{attempt}/{maxCaptchaAttempts}）...");
-                continue;
-            }
-
-            return false;
-        }
-
-        return false;
+        return await SubmitLoginAsync(username, password, validateCode, challenge.Execution, cancellationToken);
     }
 
-    private async Task<(bool Success, int Status)> LoginOnceAsync(
+    /// <summary>
+    /// 提交一次登录尝试（外部已解出 validateCode）。对齐 Rust 的 <c>submit_login</c>。
+    /// </summary>
+    public async Task<LoginSubmitResult> SubmitLoginAsync(
         string username,
         string password,
-        CancellationToken cancellationToken)
+        string validateCode,
+        string execution,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(_loginUrl) || string.IsNullOrEmpty(_epayCookie))
-            if (await TestLoginStatus())
-                return (true, CasAuthStatus.Success.ToInt());
+        if (string.IsNullOrEmpty(_loginUrl))
+            throw new InvalidOperationException("尚未探测登录状态，请先调用 ProbeLoginAsync");
 
-        var executionString =
-            await CasAuth.GetExecutionString(_loginUrl, _epayCookie);
+        var result = await CasAuth.CasLogin(
+            HttpClient, _loginUrl, username, password, validateCode, execution, cancellationToken);
 
-        // Download captcha
-        var (imageData, loginCookie) =
-            await Captcha.GetImageDataFromUrlUsingGet(
-                _loginCookie,
-                CasAuth.UserAgent
-            );
-
-        if (imageData == null)
+        switch (result)
         {
-            Console.WriteLine("获取验证码图片失败");
-            return (false, CasAuthStatus.UnrecoverableError.ToInt());
+            case CasAuthResult.Success success:
+                await CasAuth.CasRedirect(HttpClient, success.Location, cancellationToken);
+                return new LoginSubmitResult.Success();
+            case CasAuthResult.ValidateCodeError:
+                return new LoginSubmitResult.ValidateCodeError();
+            case CasAuthResult.PasswordError:
+                return new LoginSubmitResult.PasswordError();
+            case CasAuthResult.Failure failure:
+                return new LoginSubmitResult.Failure(failure.Message);
+            default:
+                return new LoginSubmitResult.Failure("未知状态");
         }
+    }
 
-        // Got cas login cookie
-        _loginCookie = loginCookie;
+    /// <summary>
+    /// 测试是否已登录。对齐 Rust 的 <c>test_login_status</c>。
+    /// </summary>
+    public async Task<bool> TestLoginStatusAsync(CancellationToken cancellationToken = default)
+    {
+        var url = GetBillUrl(1, BillType.All);
+        using var response = await HttpClient.HttpClient.GetAsync(url, cancellationToken);
+        return response.StatusCode == HttpStatusCode.OK;
+    }
 
-        // Resolve captcha via injected strategy (remote OCR / manual input / custom)
-        var captchaAnswer = await CaptchaResolver.ResolveAsync(imageData, cancellationToken);
+    /// <summary>
+    /// 获取账单页面 HTML。对齐 Rust 的 <c>get_bill</c>。
+    /// </summary>
+    public async Task<string> GetBillAsync(
+        int pageNo = 1,
+        BillType type = BillType.All,
+        CancellationToken cancellationToken = default)
+    {
+        var url = GetBillUrl(pageNo, type);
+        using var response = await HttpClient.HttpClient.GetAsync(url, cancellationToken);
 
-        Console.WriteLine(captchaAnswer.Value);
+        if (response.StatusCode == HttpStatusCode.OK)
+            return await response.Content.ReadAsStringAsync(cancellationToken);
 
-        var exprResult = captchaAnswer.Kind == CaptchaAnswerKind.Expression
-            ? Captcha.GetExprResultByExprString(captchaAnswer.Value)
-            : captchaAnswer.Value.Trim();
+        if (response.StatusCode == HttpStatusCode.Redirect)
+            throw new InvalidOperationException("未登录，需要重新登录");
 
-        var resultCas =
-            await CasAuth.CasLogin(
-                _loginUrl,
-                username, password,
-                exprResult,
-                executionString,
-                _loginCookie
-            );
-
-        if (resultCas.Item1 != CasAuthStatus.Redirect.ToInt())
-        {
-            Console.WriteLine($"程序出错，状态码：{resultCas.Item1}");
-            return (false, resultCas.Item1);
-        }
-
-        _loginCookie = resultCas.Item3;
-
-        var redirectCookie = _epayCookie + ";" + _loginCookie;
-        var resultRedirect =
-            await CasAuth.CasRedirect(resultCas.Item2, redirectCookie);
-
-        if (resultRedirect.Item1 != CasAuthStatus.Redirect.ToInt())
-        {
-            Console.WriteLine("Login Ok,but cannot redirect to bill page.");
-            Console.WriteLine($"Status code：{resultRedirect.Item1}");
-            return (false, resultRedirect.Item1);
-        }
-
-        var resultBill =
-            await GetBill(cookie: _epayCookie);
-
-        var success = resultBill.Item1 == CasAuthStatus.Success.ToInt();
-        return (success, resultBill.Item1);
+        throw new HttpRequestException(
+            $"获取账单失败，状态码: {(int)response.StatusCode}");
     }
 }

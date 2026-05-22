@@ -1,176 +1,109 @@
 using System.Net;
-using Flurl.Http;
 using HtmlAgilityPack;
 
 namespace shmtu.cas.auth.common;
 
+/// <summary>
+/// CAS 登录原子操作。对齐 Rust 的 <c>cas::{get_execution, cas_login, cas_redirect}</c>。
+/// 所有方法共享同一个 <see cref="CasHttpClient"/>，cookie 由 CookieContainer 自动管理。
+/// </summary>
 public static class CasAuth
 {
-    public const string UserAgent =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-        "Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0";
+    public const string UserAgent = CasHttpClient.DefaultUserAgent;
 
+    /// <summary>
+    /// 拉登录页，从中提取 execution 令牌。
+    /// </summary>
     public static async Task<string> GetExecutionString(
+        CasHttpClient client,
         string url = "https://cas.shmtu.edu.cn/cas/login",
-        string cookie = ""
-    )
+        CancellationToken cancellationToken = default)
     {
-        try
+        using var response = await client.HttpClient.GetAsync(url, cancellationToken);
+
+        if (response.StatusCode != HttpStatusCode.OK)
         {
-            var request = url
-                .WithHeader("Cookie", cookie)
-                .WithAutoRedirect(false)
-                .AllowHttpStatus([302]);
-            var response =
-                await request.SendAsync(HttpMethod.Get);
-
-            var responseCode = (HttpStatusCode)response.StatusCode;
-
-            if (responseCode == HttpStatusCode.OK)
-            {
-                var htmlCode =
-                    await response.ResponseMessage.Content.ReadAsStringAsync();
-
-                var document = new HtmlDocument();
-                document.LoadHtml(htmlCode);
-                var element =
-                    document.DocumentNode.SelectSingleNode("//input[@name='execution']");
-                var value =
-                    element?.GetAttributeValue("value", "") ?? "";
-                return value.Trim();
-            }
-
-            Console.WriteLine($"Get execution string error:{response.StatusCode}");
+            Console.WriteLine($"Get execution string error:{(int)response.StatusCode}");
             return "";
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Get execution string error:{ex.Message}");
-            return "";
-        }
+
+        var htmlCode = await response.Content.ReadAsStringAsync(cancellationToken);
+        var document = new HtmlDocument();
+        document.LoadHtml(htmlCode);
+        var element = document.DocumentNode.SelectSingleNode("//input[@name='execution']");
+        return (element?.GetAttributeValue("value", "") ?? "").Trim();
     }
 
-    public static async
-        Task<(int, string, string)>
-        CasLogin(
-            string url,
-            string username, string password,
-            string validateCode,
-            string execution,
-            string cookie
-        )
+    /// <summary>
+    /// 提交登录表单。
+    /// </summary>
+    public static async Task<CasAuthResult> CasLogin(
+        CasHttpClient client,
+        string url,
+        string username,
+        string password,
+        string validateCode,
+        string execution,
+        CancellationToken cancellationToken = default)
     {
-        try
+        var body = new Dictionary<string, string>
         {
-            var body = new
-            {
-                username = username.Trim(),
-                password = password.Trim(),
-                validateCode = validateCode.Trim(),
-                execution = execution.Trim(),
-                _eventId = "submit",
-                geolocation = ""
-            };
+            ["username"] = username.Trim(),
+            ["password"] = password.Trim(),
+            ["validateCode"] = validateCode.Trim(),
+            ["execution"] = execution.Trim(),
+            ["_eventId"] = "submit",
+            ["geolocation"] = "",
+        };
 
-            var response = await url
-                .WithAutoRedirect(false)
-                .AllowHttpStatus([302])
-                .WithHeader("Host", "cas.shmtu.edu.cn")
-                .WithHeader(
-                    "Content-Type",
-                    "application/x-www-form-urlencoded"
-                )
-                .WithHeader("Connection", "keep-alive")
-                .WithHeader("Accept-Encoding", "gzip, deflate, br")
-                .WithHeader("Accept", "*/*")
-                .WithHeader("User-Agent", UserAgent)
-                .WithHeader("Cookie", cookie.Trim())
-                .PostUrlEncodedAsync(body);
+        using var content = new FormUrlEncodedContent(body);
+        using var response = await client.HttpClient.PostAsync(url, content, cancellationToken);
 
-            var responseCodeInt = response.StatusCode;
-            var responseCode = (HttpStatusCode)responseCodeInt;
-
-            if (responseCode == HttpStatusCode.Redirect)
-            {
-                var location =
-                    response.ResponseMessage
-                        .Headers
-                        .GetValues("Location").FirstOrDefault() ?? "";
-                var newCookie =
-                    response.ResponseMessage
-                        .Headers
-                        .GetValues("Set-Cookie").FirstOrDefault() ?? "";
-
-                return (response.StatusCode, location, newCookie);
-            }
-
-            var htmlCode =
-                await response.ResponseMessage.Content.ReadAsStringAsync();
-            var document = new HtmlDocument();
-            document.LoadHtml(htmlCode);
-            var element =
-                document.DocumentNode.SelectSingleNode("//*[@id=\"loginErrorsPanel\"]");
-            var errorText = (element?.InnerText ?? "").Trim();
-            Console.WriteLine($"登录失败，错误信息：{errorText}");
-            if (errorText.Contains("account is not recognized"))
-            {
-                Console.WriteLine("用户名或密码错误");
-                return (CasAuthStatus.PasswordError.ToInt(), htmlCode, "");
-            }
-
-            if (errorText.Contains("reCAPTCHA"))
-            {
-                Console.WriteLine("验证码错误");
-                return (CasAuthStatus.ValidateCodeError.ToInt(), htmlCode, "");
-            }
-
-            return (response.StatusCode, htmlCode, errorText);
-        }
-        catch (Exception ex)
+        if (response.StatusCode == HttpStatusCode.Redirect)
         {
-            Console.WriteLine($"Core Login Exception: {ex.Message}");
-            return (0, "", "");
+            var location = response.Headers.Location?.ToString() ?? "";
+            return new CasAuthResult.Success(location);
         }
+
+        var htmlCode = await response.Content.ReadAsStringAsync(cancellationToken);
+        var document = new HtmlDocument();
+        document.LoadHtml(htmlCode);
+        var element = document.DocumentNode.SelectSingleNode("//*[@id=\"loginErrorsPanel\"]");
+        var errorText = (element?.InnerText ?? "").Trim();
+
+        if (errorText.Contains("account is not recognized") || errorText.Contains("用户名或密码"))
+            return new CasAuthResult.PasswordError();
+
+        if (errorText.Contains("reCAPTCHA") || errorText.Contains("验证码"))
+            return new CasAuthResult.ValidateCodeError();
+
+        return new CasAuthResult.Failure(errorText);
     }
 
-    public static async
-        Task<(int, string, string)>
-        CasRedirect(string url, string cookie)
+    /// <summary>
+    /// 跟随重定向链，最多循环 10 次。对齐 Rust 的 <c>cas_redirect</c>。
+    /// </summary>
+    public static async Task CasRedirect(
+        CasHttpClient client,
+        string url,
+        CancellationToken cancellationToken = default)
     {
-        try
+        var currentUrl = url;
+
+        for (var i = 0; i < 10; i++)
         {
-            var request = url
-                .WithAutoRedirect(false)
-                .AllowHttpStatus([302])
-                .WithHeader("User-Agent", UserAgent)
-                .WithHeader("Cookie", cookie);
-            var response = await request.SendAsync(HttpMethod.Get);
+            using var response = await client.HttpClient.GetAsync(currentUrl, cancellationToken);
 
-            var responseCodeInt = response.StatusCode;
-            var responseCode = (HttpStatusCode)responseCodeInt;
-
-            if (responseCode == HttpStatusCode.Redirect)
+            if (response.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.MovedPermanently)
             {
-                var location =
-                    response.ResponseMessage
-                        .Headers
-                        .GetValues("Location").FirstOrDefault() ?? "";
-                var newCookie =
-                    response.ResponseMessage
-                        .Headers
-                        .GetValues("Set-Cookie").FirstOrDefault() ?? "";
-
-                return (responseCodeInt, location, newCookie);
+                var location = response.Headers.Location?.ToString();
+                if (string.IsNullOrEmpty(location)) break;
+                currentUrl = location;
             }
-
-            Console.WriteLine($"请求失败，状态码：{response.StatusCode}");
-            return (responseCodeInt, "", "");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-            return (CasAuthStatus.Failure.ToInt(), "", "");
+            else
+            {
+                break;
+            }
         }
     }
 }

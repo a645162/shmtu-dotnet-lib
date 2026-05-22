@@ -1,21 +1,24 @@
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using Flurl.Http;
+using shmtu.cas.auth.common;
 
 namespace shmtu.cas.captcha;
 
+/// <summary>
+/// 验证码相关工具。HTTP 部分对齐 Rust 的 <c>captcha::fetch_captcha</c>，
+/// 算式部分对齐 <c>captcha::get_expr_result</c>。
+/// </summary>
 public static class Captcha
 {
+    public const string CaptchaUrl = "https://cas.shmtu.edu.cn/cas/captcha";
+
     // Read image from file
     public static byte[] ReadImageFromFile(string fileName)
     {
-        // Read image from file
         using var fs = new FileStream(fileName, FileMode.Open);
         var imageBytes = new byte[fs.Length];
 
-        // Try to Read the entire file
         var read = fs.Read(imageBytes, 0, imageBytes.Length);
         if (read != imageBytes.Length) throw new Exception("Error reading image file.");
 
@@ -37,83 +40,54 @@ public static class Captcha
     {
         return Regex.IsMatch(
             ip,
-            @"^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+            @"^([01]?\d\d?|2[0-4]\d|25[0-5])\." +
             @"([01]?\d\d?|2[0-4]\d|25[0-5])\." +
             @"([01]?\d\d?|2[0-4]\d|25[0-5])\." +
             @"([01]?\d\d?|2[0-4]\d|25[0-5])$"
         );
     }
 
-    // Get image data from URL
-    [Obsolete("Obsolete because 'WebClient' is obsoleted.")]
-    public static byte[] GetImageDataFromUrl(
-        string imageUrl = "https://cas.shmtu.edu.cn/cas/captcha"
-    )
-    {
-        using var client = new WebClient();
-        return client.DownloadData(imageUrl);
-    }
-
+    /// <summary>
+    /// 无 cookie 的简单拉取，主要给独立的工具脚本使用。
+    /// </summary>
     public static async Task<byte[]> GetImageDataFromUrlAsync(
-        string imageUrl = "https://cas.shmtu.edu.cn/cas/captcha"
-    )
+        string imageUrl = CaptchaUrl,
+        CancellationToken cancellationToken = default)
     {
         using var httpClient = new HttpClient();
-        using var response =
-            await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead);
+        using var response = await httpClient.GetAsync(
+            imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsByteArrayAsync();
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
     }
 
-    public static async Task<(byte[]?, string)>
-        GetImageDataFromUrlUsingGet(string cookie = "", string userAgent = "")
+    /// <summary>
+    /// 拉取验证码图片字节。对齐 Rust 的 <c>captcha::fetch_captcha</c>。
+    /// Cookie 自动通过 <see cref="CasHttpClient"/> 的 CookieContainer 管理，调用方不再需要传 cookie。
+    /// </summary>
+    public static async Task<byte[]> FetchCaptcha(
+        CasHttpClient client,
+        CancellationToken cancellationToken = default)
     {
-        const string imageUrl = "https://cas.shmtu.edu.cn/cas/captcha";
-
-        try
+        using var response = await client.HttpClient.GetAsync(CaptchaUrl, cancellationToken);
+        if (!response.IsSuccessStatusCode)
         {
-            var request = imageUrl
-                .WithHeader("Cookie", cookie);
-
-            if (userAgent.Length != 0) request = request.WithHeader("User-Agent", userAgent);
-
-            var response = await request.GetAsync();
-
-            var responseCode = (HttpStatusCode)response.StatusCode;
-
-            if (responseCode != HttpStatusCode.OK)
-            {
-                Console.WriteLine($"请求失败，状态码：{response.StatusCode}");
-                return (null, "");
-            }
-
-            // JSESSIONID是在获取验证码的过程中设置到浏览器的Cookie中的
-            // 如果不存在更新JSESSIONID操作则直接返回原本传入的Cookie
-            // 如果没有传入Cookie，一般服务器会Set-Cookie返回一个新的JSESSIONID
-            // 重试场景下复用已有 cookie 时，服务器可能不会再返回 Set-Cookie，此时直接沿用传入值
-            var returnCookie = cookie;
-            if (response.ResponseMessage.Headers.TryGetValues("Set-Cookie", out var setCookies))
-            {
-                returnCookie = setCookies.FirstOrDefault() ?? cookie;
-            }
-
-            return (response.GetBytesAsync().Result, returnCookie);
+            throw new HttpRequestException(
+                $"获取验证码失败，状态码: {(int)response.StatusCode}");
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"请求失败：{ex.Message}");
-            return (null, "");
-        }
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
     }
 
-    // OCR by remote TCP server
+    /// <summary>
+    /// 通过远端 TCP OCR 服务识别验证码（同步版本）。
+    /// </summary>
     public static string OcrByRemoteTcpServer(string host, int port, byte[] imageData)
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         socket.Connect(host, port);
         socket.SendTimeout = 5000;
 
-        var stream = new NetworkStream(socket);
+        using var stream = new NetworkStream(socket);
         stream.Write(imageData, 0, imageData.Length);
         stream.Flush();
 
@@ -128,34 +102,40 @@ public static class Captcha
         return response.Trim();
     }
 
+    /// <summary>
+    /// 通过远端 TCP OCR 服务识别验证码（异步版本）。
+    /// </summary>
     public static async Task<string> OcrByRemoteTcpServerAsync(string host, int port, byte[] imageData)
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         await socket.ConnectAsync(host, port);
         socket.SendTimeout = 5000;
 
-        var stream = new NetworkStream(socket);
-        stream.Write(imageData, 0, imageData.Length);
-        stream.Flush();
+        await using var stream = new NetworkStream(socket);
+        await stream.WriteAsync(imageData);
 
         var endMarker = "<END>"u8.ToArray();
-        await stream.WriteAsync(endMarker, 0, endMarker.Length);
+        await stream.WriteAsync(endMarker);
 
         var buffer = new byte[1024];
-        var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+        var bytesRead = await stream.ReadAsync(buffer);
         var response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
         return response.Trim();
     }
 
-    // Get expression result from expression string
-    public static string GetExprResultByExprString(string expr)
+    /// <summary>
+    /// 把 "12+34=46" 这样的算式取右侧答案 "46"；找不到 "=" 则返回空串。
+    /// 对齐 Rust 的 <c>captcha::get_expr_result</c>（注：Rust 找不到时返回 trim 后的整串）。
+    /// </summary>
+    public static string GetExprResult(string expr)
     {
         var index = expr.IndexOf('=');
-
-        if (index == -1) return "";
-        if (!(0 < index + 1 && index + 1 <= expr.Length)) return "";
-
+        if (index == -1) return expr.Trim();
+        if (index + 1 > expr.Length) return "";
         return expr[(index + 1)..].Trim();
     }
+
+    /// <summary>历史名称，保留作为别名。</summary>
+    public static string GetExprResultByExprString(string expr) => GetExprResult(expr);
 }
