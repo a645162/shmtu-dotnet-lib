@@ -24,18 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Reference Include="shmtu-ocr-onnx-lib">
-            <HintPath>../shmtu-ocr-onnx-lib/bin/$(Configuration)/net8.0/shmtu-ocr-onnx-lib.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
+        <ProjectReference Include="../shmtu-ocr-onnx-lib/shmtu-ocr-onnx-lib.csproj"/>
     </ItemGroup>
-
-    <Target Name="BuildLocalDependencies"
-            BeforeTargets="ResolveReferences">
-        <MSBuild Projects="../shmtu-ocr-onnx-lib/shmtu-ocr-onnx-lib.csproj"
-                 Targets="Build"
-                 Properties="Configuration=$(Configuration)"
-                 RemoveProperties="BuildingSolutionFile;CurrentSolutionConfigurationContents;SolutionDir;SolutionExt;SolutionFileName;SolutionName;SolutionPath;ExcludeRestorePackageImports;_RestoreSolutionFileUsed" />
-    </Target>
 
 </Project>
