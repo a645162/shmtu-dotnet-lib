@@ -9,18 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Reference Include="shmtu-dotnet-lib">
-            <HintPath>../shmtu-dotnet-lib/bin/$(Configuration)/net8.0/shmtu-dotnet-lib.dll</HintPath>
-            <Private>true</Private>
-        </Reference>
+        <ProjectReference Include="../shmtu-dotnet-lib/shmtu-dotnet-lib.csproj"/>
     </ItemGroup>
-
-    <Target Name="BuildLocalDependencies"
-            BeforeTargets="ResolveReferences">
-        <MSBuild Projects="../shmtu-dotnet-lib/shmtu-dotnet-lib.csproj"
-                 Targets="Build"
-                 Properties="Configuration=$(Configuration)"
-                 RemoveProperties="BuildingSolutionFile;CurrentSolutionConfigurationContents;SolutionDir;SolutionExt;SolutionFileName;SolutionName;SolutionPath;ExcludeRestorePackageImports;_RestoreSolutionFileUsed" />
-    </Target>
 
 </Project>
