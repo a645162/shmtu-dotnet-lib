@@ -1,6 +1,6 @@
 namespace shmtu.cas.captcha;
 
-public sealed class RemoteOcrCaptchaResolver : ICaptchaResolver
+public sealed class RemoteOcrCaptchaResolver : ICaptchaResolver, IDisposable
 {
     public string Host { get; }
     public int Port { get; }
@@ -16,4 +16,6 @@ public sealed class RemoteOcrCaptchaResolver : ICaptchaResolver
         var expression = await Captcha.OcrByRemoteTcpServerAsync(Host, Port, imageData);
         return new CaptchaAnswer(expression, CaptchaAnswerKind.Expression);
     }
+
+    public void Dispose() { }
 }
