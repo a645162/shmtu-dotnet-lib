@@ -2,6 +2,8 @@
 
 上海海事大学CAS系统 登录流程(.Net Core版本)
 
+[![Nuget](https://github.com/a645162/shmtu-dotnet-lib/actions/workflows/dotnet.yml/badge.svg)](https://github.com/a645162/shmtu-dotnet-lib/actions/workflows/dotnet.yml)
+
 ## 移植说明
 
 [本项目](https://github.com/a645162/shmtu-dotnet-lib)
