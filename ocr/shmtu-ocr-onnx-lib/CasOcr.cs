@@ -1,6 +1,5 @@
 using shmtu.captcha.onnx.Backend;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 
 namespace shmtu.captcha.onnx;
 
@@ -64,7 +63,7 @@ public sealed class CasOcr : IDisposable
     }
 
     public (int Result, string Expr, int EqualSymbol, int Operator, int Digit1, int Digit2)
-        PredictValidateCode(Image<Rgba32> image)
+        PredictValidateCode(SKBitmap image)
     {
         var defaultValue = (-1, "", -1, -1, -1, -1);
         if (!_backend.IsLoaded && !LoadModel()) return defaultValue;
@@ -76,7 +75,8 @@ public sealed class CasOcr : IDisposable
     {
         try
         {
-            using var image = Image.Load<Rgba32>(imagePath);
+            using var image = SKBitmap.Decode(imagePath);
+            if (image == null) return (-1, "", -1, -1, -1, -1);
             return PredictValidateCode(image);
         }
         catch (Exception e)
@@ -91,7 +91,8 @@ public sealed class CasOcr : IDisposable
     {
         try
         {
-            using var image = Image.Load<Rgba32>(stream);
+            using var image = SKBitmap.Decode(stream);
+            if (image == null) return (-1, "", -1, -1, -1, -1);
             return PredictValidateCode(image);
         }
         catch (Exception e)
@@ -112,7 +113,14 @@ public sealed class CasOcr : IDisposable
 
     private static string ResolvePath(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return AppContext.BaseDirectory;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var defaultModelsDir = Path.GetFullPath(Path.Combine(baseDir, "..", "Models"));
+            if (Directory.Exists(defaultModelsDir)) return defaultModelsDir;
+            Directory.CreateDirectory(defaultModelsDir);
+            return defaultModelsDir;
+        }
         if (!Directory.Exists(path)) Directory.CreateDirectory(path);
         return Path.GetFullPath(path);
     }

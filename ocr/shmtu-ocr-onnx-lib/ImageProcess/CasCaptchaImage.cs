@@ -1,6 +1,4 @@
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace shmtu.captcha.onnx.ImageProcess;
 
@@ -46,7 +44,7 @@ public static class CasCaptchaImage
             _ => -1
         };
 
-    public static Image<Rgba32> SplitImgByRatio(Image<Rgba32> image, float startRatio, float endRatio)
+    public static SKBitmap SplitImgByRatio(SKBitmap image, float startRatio, float endRatio)
     {
         var width = image.Width;
         var height = image.Height;
@@ -56,7 +54,14 @@ public static class CasCaptchaImage
         var horizontalStart = (int)(width * startRatio);
         var horizontalEnd = endRatio >= 1f ? width : (int)(width * endRatio);
 
-        var rect = new Rectangle(horizontalStart, 0, horizontalEnd - horizontalStart, height);
-        return image.Clone(ctx => ctx.Crop(rect));
+        var cropWidth = horizontalEnd - horizontalStart;
+        var subset = new SKBitmap(cropWidth, height, image.ColorType, image.AlphaType);
+        using (var canvas = new SKCanvas(subset))
+        {
+            var srcRect = SKRectI.Create(horizontalStart, 0, cropWidth, height);
+            var dstRect = new SKRect(0, 0, cropWidth, height);
+            canvas.DrawBitmap(image, srcRect, dstRect);
+        }
+        return subset;
     }
 }

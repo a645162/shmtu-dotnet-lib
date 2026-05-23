@@ -1,7 +1,5 @@
 using Microsoft.ML.OnnxRuntime.Tensors;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace shmtu.captcha.onnx.ImageProcess;
 
@@ -20,32 +18,32 @@ public static class ResNetProcess
     /// 通道顺序: ch0=R, ch1=G, ch2=B；归一化: (v - mean) * (1/std)。
     /// 等价于 OpenCV cv::resize(INTER_LINEAR) + substract_mean_normalize。
     /// </summary>
-    public static DenseTensor<float> ConvertImageToTensor(Image<Rgba32> image)
+    public static DenseTensor<float> ConvertImageToTensor(SKBitmap image)
     {
-        using var resized = image.Clone(ctx =>
-            ctx.Resize(new ResizeOptions
-            {
-                Size = new Size(Width, Height),
-                Mode = ResizeMode.Stretch,
-                Sampler = KnownResamplers.Triangle
-            }));
+        var resized = new SKBitmap(Width, Height, image.ColorType, image.AlphaType);
+        using (var canvas = new SKCanvas(resized))
+        {
+#pragma warning disable CS0618 // SKFilterQuality is obsolete in SkiaSharp 3.x but still functional
+            using var paint = new SKPaint { FilterQuality = SKFilterQuality.Medium };
+#pragma warning restore CS0618
+            canvas.DrawBitmap(image, new SKRect(0, 0, Width, Height), paint);
+        }
 
         var tensor = new DenseTensor<float>(new[] { 1, Channels, Height, Width });
 
-        resized.ProcessPixelRows(accessor =>
+        if (resized == null) return tensor;
+
+        var pixels = resized.Pixels;
+        for (var y = 0; y < Height; y++)
         {
-            for (var y = 0; y < Height; y++)
+            for (var x = 0; x < Width; x++)
             {
-                var row = accessor.GetRowSpan(y);
-                for (var x = 0; x < Width; x++)
-                {
-                    var p = row[x];
-                    tensor[0, 0, y, x] = (p.R - Mean[0]) * NormInv[0];
-                    tensor[0, 1, y, x] = (p.G - Mean[1]) * NormInv[1];
-                    tensor[0, 2, y, x] = (p.B - Mean[2]) * NormInv[2];
-                }
+                var p = pixels[y * Width + x];
+                tensor[0, 0, y, x] = (p.Red - Mean[0]) * NormInv[0];
+                tensor[0, 1, y, x] = (p.Green - Mean[1]) * NormInv[1];
+                tensor[0, 2, y, x] = (p.Blue - Mean[2]) * NormInv[2];
             }
-        });
+        }
 
         return tensor;
     }

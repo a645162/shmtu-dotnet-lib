@@ -2,8 +2,7 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using shmtu.captcha.onnx.ImageProcess;
 using shmtu.captcha.onnx.Utils;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 
 namespace shmtu.captcha.onnx.Backend;
 
@@ -103,20 +102,20 @@ public sealed class CasOnnxBackend : IDisposable
         return Array.IndexOf(array, array.Max());
     }
 
-    private static int PredictResNet(InferenceSession? session, Image<Rgba32> image)
+    private static int PredictResNet(InferenceSession? session, SKBitmap image)
     {
         var tensor = ResNetProcess.ConvertImageToTensor(image);
         return PredictModel(session, tensor);
     }
 
     public (int Result, string Expr, int EqualSymbol, int Operator, int Digit1, int Digit2)
-        PredictValidateCode(Image<Rgba32> originalImage)
+        PredictValidateCode(SKBitmap originalImage)
     {
         var defaultValue = (-1, "", -1, -1, -1, -1);
         if (!IsLoaded) return defaultValue;
         if (originalImage.Width == 0 || originalImage.Height == 0) return defaultValue;
 
-        using var image = originalImage.Clone();
+        using var image = originalImage.Copy();
         ImageUtils.BinarizeInPlace(image, CasCaptchaImage.ConfigThresh);
 
         using var imageEqualSymbol = CasCaptchaImage.SplitImgByRatio(

@@ -6,11 +6,26 @@
         <AssemblyName>shmtu-ocr-onnx-demo</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+        <TargetFramework>net8.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\shmtu-ocr-onnx-lib\shmtu-ocr-onnx-lib.csproj"/>
+        <PackageReference Include="SkiaSharp" Version="2.88.9" />
     </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="shmtu-ocr-onnx-lib">
+            <HintPath>../shmtu-ocr-onnx-lib/bin/$(Configuration)/net8.0/shmtu-ocr-onnx-lib.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
+    </ItemGroup>
+
+    <Target Name="BuildLocalDependencies"
+            BeforeTargets="ResolveReferences">
+        <MSBuild Projects="../shmtu-ocr-onnx-lib/shmtu-ocr-onnx-lib.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration)"
+                 RemoveProperties="BuildingSolutionFile;CurrentSolutionConfigurationContents;SolutionDir;SolutionExt;SolutionFileName;SolutionName;SolutionPath;ExcludeRestorePackageImports;_RestoreSolutionFileUsed" />
+    </Target>
 
 </Project>

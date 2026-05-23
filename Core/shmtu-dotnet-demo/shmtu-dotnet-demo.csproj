@@ -5,11 +5,22 @@
         <RootNamespace>shmtu.cas.demo</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+        <TargetFramework>net8.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\shmtu-dotnet-lib\shmtu-dotnet-lib.csproj"/>
+        <Reference Include="shmtu-dotnet-lib">
+            <HintPath>../shmtu-dotnet-lib/bin/$(Configuration)/net8.0/shmtu-dotnet-lib.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
     </ItemGroup>
+
+    <Target Name="BuildLocalDependencies"
+            BeforeTargets="ResolveReferences">
+        <MSBuild Projects="../shmtu-dotnet-lib/shmtu-dotnet-lib.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration)"
+                 RemoveProperties="BuildingSolutionFile;CurrentSolutionConfigurationContents;SolutionDir;SolutionExt;SolutionFileName;SolutionName;SolutionPath;ExcludeRestorePackageImports;_RestoreSolutionFileUsed" />
+    </Target>
 
 </Project>

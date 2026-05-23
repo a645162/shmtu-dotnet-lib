@@ -5,24 +5,39 @@
         <AssemblyName>shmtu-ocr-onnx-tests</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+        <TargetFramework>net8.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1"/>
-        <PackageReference Include="xunit" Version="2.9.2"/>
-        <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2"/>
-        <PackageReference Include="Xunit.SkippableFact" Version="1.5.23"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+        <PackageReference Include="SkiaSharp" Version="2.88.9" />
+        <PackageReference Include="xunit" Version="2.9.3" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0-pre.4">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Xunit.SkippableFact" Version="1.5.61" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\shmtu-ocr-onnx-lib\shmtu-ocr-onnx-lib.csproj"/>
+        <Reference Include="shmtu-ocr-onnx-lib">
+            <HintPath>../shmtu-ocr-onnx-lib/bin/$(Configuration)/net8.0/shmtu-ocr-onnx-lib.dll</HintPath>
+            <Private>true</Private>
+        </Reference>
     </ItemGroup>
 
     <ItemGroup>
         <None Include="Samples\**\*" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
+
+    <Target Name="BuildLocalDependencies"
+            BeforeTargets="ResolveReferences">
+        <MSBuild Projects="../shmtu-ocr-onnx-lib/shmtu-ocr-onnx-lib.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration)"
+                 RemoveProperties="BuildingSolutionFile;CurrentSolutionConfigurationContents;SolutionDir;SolutionExt;SolutionFileName;SolutionName;SolutionPath;ExcludeRestorePackageImports;_RestoreSolutionFileUsed" />
+    </Target>
 
 </Project>

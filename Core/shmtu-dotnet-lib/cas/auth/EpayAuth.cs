@@ -54,8 +54,8 @@ public sealed class EpayAuth : IDisposable
     public static string GetTabNo(BillType type) => type switch
     {
         BillType.All => "1",
-        BillType.NotPaid => "2",
-        BillType.Success => "3",
+        BillType.Success => "2",
+        BillType.NotPaid => "3",
         BillType.Failure => "4",
         _ => "1",
     };
