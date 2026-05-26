@@ -1,6 +1,3 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
 name: Build and publish to NuGet
 
 on:
@@ -10,10 +7,11 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # ============================================================
+  # 1. Build & Pack
+  # ============================================================
   build:
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v6
 
@@ -27,18 +25,15 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.13
-
-      - name: Test NuGet Client
-        run: dotnet nuget --help
+          python-version: "3.12"
 
       - name: (.Net)Restore dependencies
         run: dotnet restore
+
       - name: (.Net)Build
         run: dotnet build --no-restore --configuration Release
+
       - name: (.Net)Test
-        # CI 跳过 OCR 类目测试：ONNX 推理在 GitHub runner 上耗算力 + 远端 OCR 服务不稳定。
-        # 本地手动跑用：dotnet test （无 --filter）
         run: dotnet test --no-build --configuration Release --verbosity normal --filter "Category!=Ocr"
 
       - name: (.Net)Pack
@@ -48,8 +43,61 @@ jobs:
             --output ./Output \
             ./Core/shmtu-dotnet-lib/shmtu-dotnet-lib.csproj
 
-      - name: (.Net)Publish
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: shmtu-dotnet-lib-nupkg
+          path: Output/*.nupkg
+
+  # ============================================================
+  # 2. Push to NuGet.org (并行)
+  # ============================================================
+  push-nuget-org:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: shmtu-dotnet-lib-nupkg
+          path: .
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Push to NuGet.org
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          python ./Scripts/push_nuget.py
+          for f in *.nupkg; do
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+  # ============================================================
+  # 3. Push to GitHub Packages (并行)
+  # ============================================================
+  push-github-packages:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: shmtu-dotnet-lib-nupkg
+          path: .
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+          source-url: https://nuget.pkg.github.com/a645162/index.json
+          nuget-auth-token: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Push to GitHub Packages
+        run: |
+          for f in *.nupkg; do
+            dotnet nuget push "$f" --source github --skip-duplicate
+          done

@@ -1,0 +1,13 @@
+# GPU 覆盖配置，仅在使用 GPU 版本时叠加
+# 用法: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+services:
+  shmtu-ocr-server:
+    environment:
+      - OcrServer__ExecutionProvider=CUDA
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

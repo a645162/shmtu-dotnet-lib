@@ -9,13 +9,26 @@ if __name__ == "__main__":
         xml_content = f.read()
 
     version = parse_version(xml_content)
-    nuget_api_key = os.environ["NUGET_API_KEY"]
+    nupkg = f"Output/shmtu-dotnet-lib.{version}.nupkg"
 
-    cmd = (
-        f"dotnet nuget push "
-        f"\"Output/shmtu-dotnet-lib.{version}.nupkg\" "
-        f"--api-key \"{nuget_api_key}\" "
-        f"--source https://api.nuget.org/v3/index.json"
-    )
+    # 推送到 NuGet.org
+    if os.environ.get("NUGET_API_KEY"):
+        cmd_nuget = (
+            f"dotnet nuget push "
+            f'"{nupkg}" '
+            f'--api-key "{os.environ["NUGET_API_KEY"]}" '
+            f"--source https://api.nuget.org/v3/index.json"
+        )
+        print(f"Pushing to NuGet.org: {cmd_nuget}")
+        os.system(cmd_nuget)
 
-    os.system(cmd)
+    # 推送到 GitHub Packages
+    if os.environ.get("GITHUB_TOKEN"):
+        cmd_github = (
+            f"dotnet nuget push "
+            f'"{nupkg}" '
+            f'--api-key "{os.environ["GITHUB_TOKEN"]}" '
+            f"--source https://nuget.pkg.github.com/a645162/index.json"
+        )
+        print(f"Pushing to GitHub Packages: {cmd_github}")
+        os.system(cmd_github)

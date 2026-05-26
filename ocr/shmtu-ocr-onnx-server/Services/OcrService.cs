@@ -11,6 +11,8 @@ public class OcrServerConfig
     public int PoolSize { get; set; } = 0;
     public int TcpPort { get; set; } = 21601;
     public string TcpListenAddress { get; set; } = "0.0.0.0";
+    public string ExecutionProvider { get; set; } = "CPU";
+    public int GpuDeviceId { get; set; } = 0;
 }
 
 public class OcrService : IDisposable
@@ -28,7 +30,8 @@ public class OcrService : IDisposable
         var modelDir = ResolveModelDirectory(cfg.ModelDirectory);
         _poolSize = cfg.PoolSize > 0 ? cfg.PoolSize : Math.Max(Environment.ProcessorCount, 4);
 
-        var policy = new CasOcrPooledObjectPolicy(modelDir);
+        var useGpu = cfg.ExecutionProvider.Equals("CUDA", StringComparison.OrdinalIgnoreCase);
+        var policy = new CasOcrPooledObjectPolicy(modelDir, useGpu, cfg.GpuDeviceId);
         _pool = new DefaultObjectPool<CasOcr>(policy, _poolSize);
     }
 
@@ -71,16 +74,17 @@ public class OcrService : IDisposable
                 return new OcrResponse { Success = false, Error = "Model not loaded" };
 
             var (result, expr, equalSymbol, op, digit1, digit2) = ocr.PredictValidateCode(imageBytes);
+            var success = !string.IsNullOrEmpty(expr);
             return new OcrResponse
             {
-                Success = result >= 0,
+                Success = success,
                 Expression = expr,
                 Result = result,
                 EqualSymbol = equalSymbol,
                 Operator = op,
                 Digit1 = digit1,
                 Digit2 = digit2,
-                Error = result < 0 ? "OCR recognition failed" : null
+                Error = success ? null : "OCR recognition failed"
             };
         }
         catch (Exception ex)
@@ -114,15 +118,19 @@ public class OcrService : IDisposable
 internal class CasOcrPooledObjectPolicy : PooledObjectPolicy<CasOcr>
 {
     private readonly string? _modelDir;
+    private readonly bool _useGpu;
+    private readonly int _gpuDeviceId;
 
-    public CasOcrPooledObjectPolicy(string? modelDir)
+    public CasOcrPooledObjectPolicy(string? modelDir, bool useGpu = false, int gpuDeviceId = 0)
     {
         _modelDir = modelDir;
+        _useGpu = useGpu;
+        _gpuDeviceId = gpuDeviceId;
     }
 
     public override CasOcr Create()
     {
-        return new CasOcr(_modelDir);
+        return new CasOcr(_modelDir, _useGpu, _gpuDeviceId);
     }
 
     public override bool Return(CasOcr obj)

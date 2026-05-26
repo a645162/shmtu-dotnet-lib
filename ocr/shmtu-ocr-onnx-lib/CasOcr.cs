@@ -12,10 +12,14 @@ public sealed class CasOcr : IDisposable
 {
     private readonly CasOnnxBackend _backend = new();
     private string _modelDirectoryPath;
+    private readonly bool _useGpu;
+    private readonly int _gpuDeviceId;
 
-    public CasOcr(string? modelDirectoryPath = null)
+    public CasOcr(string? modelDirectoryPath = null, bool useGpu = false, int gpuDeviceId = 0)
     {
         _modelDirectoryPath = ResolvePath(modelDirectoryPath);
+        _useGpu = useGpu;
+        _gpuDeviceId = gpuDeviceId;
     }
 
     public string ModelDirectoryPath
@@ -53,7 +57,7 @@ public sealed class CasOcr : IDisposable
         if (_backend.IsLoaded) return true;
         try
         {
-            return _backend.LoadModel(ModelDirectoryPath);
+            return _backend.LoadModel(ModelDirectoryPath, _useGpu, _gpuDeviceId);
         }
         catch (Exception e)
         {

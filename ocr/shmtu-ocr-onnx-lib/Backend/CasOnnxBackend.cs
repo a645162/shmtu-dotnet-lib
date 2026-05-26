@@ -73,14 +73,24 @@ public sealed class CasOnnxBackend : IDisposable
         }
     }
 
-    public bool LoadModel(string directoryPath)
+    public bool LoadModel(string directoryPath, bool useGpu = false, int gpuDeviceId = 0)
     {
         if (!CheckModelIsExist(directoryPath)) return false;
         var basePath = Path.GetFullPath(directoryPath);
 
-        _sessionEqualSymbol = new InferenceSession(Path.Combine(basePath, ConstValue.ModelOnnxEqualFp32));
-        _sessionOperator = new InferenceSession(Path.Combine(basePath, ConstValue.ModelOnnxOperatorFp32));
-        _sessionDigit = new InferenceSession(Path.Combine(basePath, ConstValue.ModelOnnxDigitFp32));
+        var options = new SessionOptions();
+
+#if GPU_BUILD
+        if (useGpu)
+        {
+            options.AppendExecutionProvider_CUDA(gpuDeviceId);
+            Console.WriteLine($"[OCR] 使用 CUDA GPU 设备 {gpuDeviceId}");
+        }
+#endif
+
+        _sessionEqualSymbol = new InferenceSession(Path.Combine(basePath, ConstValue.ModelOnnxEqualFp32), options);
+        _sessionOperator = new InferenceSession(Path.Combine(basePath, ConstValue.ModelOnnxOperatorFp32), options);
+        _sessionDigit = new InferenceSession(Path.Combine(basePath, ConstValue.ModelOnnxDigitFp32), options);
         _isLoaded = true;
         return true;
     }

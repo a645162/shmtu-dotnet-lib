@@ -1,13 +1,21 @@
+# .env 文件配置示例：
+# OCR_VARIANT=latest        # CPU 版本（默认）
+# OCR_VARIANT=latest-gpu    # GPU 版本（需要 NVIDIA 驱动）
+
 services:
   shmtu-ocr-server:
+    image: ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:${OCR_VARIANT:-latest}
     build:
       context: .
       dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-runtime-cpu}
+      args:
+        USE_GPU: ${USE_GPU:-false}
     container_name: shmtu-ocr-server
     restart: unless-stopped
     ports:
-      - "5000:5000"
-      - "21601:21601"
+      - "${HTTP_PORT:-5000}:5000"
+      - "${TCP_PORT:-21601}:21601"
     volumes:
       - ./models:/app/models:ro
     environment:
@@ -16,6 +24,8 @@ services:
       - OcrServer__TcpPort=21601
       - OcrServer__TcpListenAddress=0.0.0.0
       - OcrServer__PoolSize=0
+      - OcrServer__ExecutionProvider=${EXECUTION_PROVIDER:-CPU}
+      - OcrServer__GpuDeviceId=${GPU_DEVICE_ID:-0}
       - ASPNETCORE_ENVIRONMENT=Production
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
