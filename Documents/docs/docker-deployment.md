@@ -9,34 +9,13 @@
 
 ## 镜像地址
 
-### 1. Docker Hub（推荐国内用户）
+默认 `docker-compose.yml` 使用阿里云镜像地址：
 
-```bash
-# CPU 版本
-docker pull a645162/shmtu-ocr-server:latest
-docker pull a645162/shmtu-ocr-server:1.0.0
-
-# GPU 版本
-docker pull a645162/shmtu-ocr-server:latest-gpu
-docker pull a645162/shmtu-ocr-server:1.0.0-gpu
+```text
+registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server
 ```
 
-### 2. GitHub Container Registry（适合海外/开发者）
-
-```bash
-# 登录（需要 GitHub Token）
-echo $GITHUB_TOKEN | docker login ghcr.io -u <用户名> --password-stdin
-
-# CPU 版本
-docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:latest
-docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:1.0.0
-
-# GPU 版本
-docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:latest-gpu
-docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:1.0.0-gpu
-```
-
-### 3. 阿里云容器镜像服务（适合国内企业）
+### 1. 阿里云容器镜像服务（默认）
 
 ```bash
 # 登录
@@ -49,6 +28,33 @@ docker pull registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server:1.0.0
 # GPU 版本
 docker pull registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server:latest-gpu
 docker pull registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server:1.0.0-gpu
+```
+
+### 2. Docker Hub（备选）
+
+```bash
+# CPU 版本
+docker pull a645162/shmtu-ocr-server:latest
+docker pull a645162/shmtu-ocr-server:1.0.0
+
+# GPU 版本
+docker pull a645162/shmtu-ocr-server:latest-gpu
+docker pull a645162/shmtu-ocr-server:1.0.0-gpu
+```
+
+### 3. GitHub Container Registry（适合海外/开发者）
+
+```bash
+# 登录（需要 GitHub Token）
+echo $GITHUB_TOKEN | docker login ghcr.io -u <用户名> --password-stdin
+
+# CPU 版本
+docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:latest
+docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:1.0.0
+
+# GPU 版本
+docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:latest-gpu
+docker pull ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:1.0.0-gpu
 ```
 
 ## 快速启动
@@ -79,6 +85,9 @@ docker run -d \
 ### 使用 Docker Compose
 
 ```bash
+# 先在仓库根目录复制配置
+cp .env.example .env
+
 # CPU 版本
 docker compose up -d
 
@@ -92,6 +101,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| `IMAGE_REPOSITORY` | `registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server` | 镜像仓库地址 |
 | `OcrServer__ModelDirectory` | `/app/models` | ONNX 模型文件目录 |
 | `OcrServer__ExecutionProvider` | `CPU` | 推理提供者：`CPU` 或 `CUDA` |
 | `OcrServer__GpuDeviceId` | `0` | GPU 设备 ID |

@@ -1,5 +1,7 @@
 # OCR ONNX 服务 Docker 部署指南
 
+`docker-compose.yml`、`docker-compose.gpu.yml` 和 `.env.example` 已统一迁移到仓库根目录。
+
 ## 前置要求
 
 - Docker 20.10+
@@ -24,13 +26,17 @@ mkdir -p models
 
 ### 2. 使用 Docker Compose 启动
 
+推荐在仓库根目录使用示例文件：
+
 ```bash
+cp .env.example .env
 docker compose up -d
 ```
 
 ### 3. 查看日志
 
 ```bash
+# 在仓库根目录执行
 docker compose logs -f
 ```
 
@@ -88,12 +94,14 @@ docker run -d \
 ## 停止服务
 
 ```bash
+# 在仓库根目录执行
 docker compose down
 ```
 
 ## 重新构建
 
 ```bash
+# 在仓库根目录执行
 docker compose build --no-cache
 docker compose up -d
 ```

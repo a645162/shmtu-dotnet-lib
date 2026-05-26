@@ -1,12 +1,15 @@
-# .env 文件配置示例：
-# OCR_VARIANT=latest        # CPU 版本（默认）
-# OCR_VARIANT=latest-gpu    # GPU 版本（需要 NVIDIA 驱动）
+# Repository root example.
+# Copy .env.example to .env, then run:
+#   docker compose up -d
+#
+# GPU:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 services:
   shmtu-ocr-server:
-    image: ghcr.io/a645162/shmtu-terminal/shmtu-ocr-server:${OCR_VARIANT:-latest}
+    image: ${IMAGE_REPOSITORY:-registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server}:${OCR_VARIANT:-latest}
     build:
-      context: .
+      context: ./ocr
       dockerfile: Dockerfile
       target: ${BUILD_TARGET:-runtime-cpu}
       args:
