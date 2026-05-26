@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:5000 \
+ENV ASPNETCORE_URLS=http://+:21600 \
     OcrServer__ModelDirectory=/app/models \
     OcrServer__TcpPort=21601 \
     OcrServer__TcpListenAddress=0.0.0.0 \
@@ -52,10 +52,10 @@ ENV ASPNETCORE_URLS=http://+:5000 \
     OcrServer__GpuDeviceId=0
 
 RUN mkdir -p /app/models
-EXPOSE 5000 21601
+EXPOSE 21600 21601
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
+    CMD curl -f http://localhost:21600/api/health || exit 1
 
 ENTRYPOINT ["./shmtu-ocr-onnx-server"]
 
@@ -72,7 +72,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:5000 \
+ENV ASPNETCORE_URLS=http://+:21600 \
     OcrServer__ModelDirectory=/app/models \
     OcrServer__TcpPort=21601 \
     OcrServer__TcpListenAddress=0.0.0.0 \
@@ -82,9 +82,9 @@ ENV ASPNETCORE_URLS=http://+:5000 \
     LD_LIBRARY_PATH=/app:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 RUN mkdir -p /app/models
-EXPOSE 5000 21601
+EXPOSE 21600 21601
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
+    CMD curl -f http://localhost:21600/api/health || exit 1
 
 ENTRYPOINT ["./shmtu-ocr-onnx-server"]

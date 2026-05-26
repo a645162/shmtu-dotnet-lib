@@ -5,7 +5,7 @@ set -euo pipefail
 
 HOST="${HOST:-127.0.0.1}"
 TCP_PORT="${TCP_PORT:-21601}"
-HTTP_PORT="${HTTP_PORT:-5000}"
+HTTP_PORT="${HTTP_PORT:-21600}"
 
 RED='\033[31m'
 GREEN='\033[32m'

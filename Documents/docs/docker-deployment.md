@@ -58,7 +58,7 @@ docker pull registry.cn-shanghai.aliyuncs.com/a645162/shmtu-ocr-server:1.0.0-gpu
 ```bash
 docker run -d \
   --name shmtu-ocr-server \
-  -p 5000:5000 \
+  -p 21600:21600 \
   -p 21601:21601 \
   -v /path/to/models:/app/models:ro \
   a645162/shmtu-ocr-server:latest
@@ -69,7 +69,7 @@ docker run -d \
 ```bash
 docker run -d \
   --name shmtu-ocr-server-gpu \
-  -p 5000:5000 \
+  -p 21600:21600 \
   -p 21601:21601 \
   -v /path/to/models:/app/models:ro \
   --gpus all \
@@ -97,13 +97,13 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 | `OcrServer__GpuDeviceId` | `0` | GPU 设备 ID |
 | `OcrServer__PoolSize` | `0` (自动) | CasOcr 对象池大小，建议设为 CPU 核心数 |
 | `OcrServer__TcpPort` | `21601` | TCP 服务端口 |
-| `ASPNETCORE_URLS` | `http://+:5000` | HTTP 服务地址 |
+| `ASPNETCORE_URLS` | `http://+:21600` | HTTP 服务地址 |
 
 ### 端口说明
 
 | 端口 | 协议 | 说明 |
 |------|------|------|
-| `5000` | HTTP (RESTful) | RESTful API |
+| `21600` | HTTP (RESTful) | RESTful API |
 | `21601` | TCP | TCP 二进制协议 |
 
 ## API 使用
@@ -112,15 +112,15 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 ```bash
 # 健康检查
-curl http://localhost:5000/api/health
+curl http://localhost:21600/api/health
 
 # OCR 识别
-curl -X POST http://localhost:5000/api/ocr \
+curl -X POST http://localhost:21600/api/ocr \
   -H "Content-Type: application/json" \
   -d '{"imageBase64": "'$(base64 -w0 captcha.png)'"}'
 
 # 文件上传
-curl -X POST http://localhost:5000/api/ocr/upload \
+curl -X POST http://localhost:21600/api/ocr/upload \
   -F "file=@captcha.png"
 ```
 

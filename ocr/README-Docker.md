@@ -38,15 +38,15 @@ docker compose logs -f
 
 ```bash
 # 健康检查
-curl http://localhost:5000/api/health
+curl http://localhost:21600/api/health
 
 # OCR 识别（Base64 方式）
-curl -X POST http://localhost:5000/api/ocr \
+curl -X POST http://localhost:21600/api/ocr \
   -H "Content-Type: application/json" \
   -d '{"imageBase64": "<base64编码的图片>"}'
 
 # OCR 识别（文件上传方式）
-curl -X POST http://localhost:5000/api/ocr/upload \
+curl -X POST http://localhost:21600/api/ocr/upload \
   -F "file=@captcha.png"
 ```
 
@@ -59,7 +59,7 @@ docker build -t shmtu-ocr-server .
 # 运行容器
 docker run -d \
   --name shmtu-ocr-server \
-  -p 5000:5000 \
+  -p 21600:21600 \
   -p 21601:21601 \
   -v $(pwd)/models:/app/models:ro \
   -e OcrServer__ModelDirectory=/app/models \
@@ -72,14 +72,14 @@ docker run -d \
 
 | 端口 | 协议 | 用途 |
 |------|------|------|
-| 5000 | HTTP | ASP.NET Core REST API |
+| 21600 | HTTP | ASP.NET Core REST API |
 | 21601 | TCP | TCP OCR 服务 |
 
 ## 环境变量
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
-| `ASPNETCORE_URLS` | `http://+:5000` | HTTP 监听地址 |
+| `ASPNETCORE_URLS` | `http://+:21600` | HTTP 监听地址 |
 | `OcrServer__ModelDirectory` | `/app/models` | ONNX 模型文件目录 |
 | `OcrServer__TcpPort` | `21601` | TCP 服务端口 |
 | `OcrServer__TcpListenAddress` | `0.0.0.0` | TCP 监听地址 |

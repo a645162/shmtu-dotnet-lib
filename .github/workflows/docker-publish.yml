@@ -52,9 +52,9 @@ jobs:
           echo "Aliyun ACR REGISTRY=${{ env.ACR_REGISTRY }}"
 
   # ============================================================
-  # 2. 构建 Docker 镜像 (CPU + GPU 并行)
+  # 2. 只构建一次并推送到 GHCR (多架构 + CPU/GPU 并行)
   # ============================================================
-  build-docker-image:
+  build-and-push-ghcr:
     runs-on: ubuntu-latest
     needs: prepare-environment
     strategy:
@@ -75,62 +75,9 @@ jobs:
       - name: Export program version
         run: |
           echo "PROGRAM_VERSION=${{ needs.prepare-environment.outputs.program-version }}" >> $GITHUB_ENV
-          echo "ACR_REGISTRY=${{ needs.prepare-environment.outputs.acr-registry }}" >> $GITHUB_ENV
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ocr
-          file: ocr/Dockerfile
-          target: ${{ matrix.target }}
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            USE_GPU=${{ matrix.use_gpu }}
-          load: true
-          tags: |
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest${{ matrix.tag_suffix }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
-          cache-to: type=gha,scope=${{ matrix.variant }},mode=max
-
-      - name: Upload image as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: shmtu-ocr-server-${{ matrix.variant }}
-          tags: |
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest${{ matrix.tag_suffix }}
-
-  # ============================================================
-  # 3. 推送镜像 (三个 Registry 并行)
-  # ============================================================
-  push-ghcr:
-    runs-on: ubuntu-latest
-    needs: [prepare-environment, build-docker-image]
-    strategy:
-      matrix:
-        include:
-          - variant: cpu
-          - variant: gpu
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Export program version
-        run: |
-          echo "PROGRAM_VERSION=${{ needs.prepare-environment.outputs.program-version }}" >> $GITHUB_ENV
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: shmtu-ocr-server-${{ matrix.variant }}
-          path: .
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -142,39 +89,43 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Import image and push to GHCR
-        run: |
-          docker load --input shmtu-ocr-server-${{ matrix.variant }}/image.tar
-          docker images
-          docker tag \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.variant == 'gpu' && '-gpu' || '' }} \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.variant == 'gpu' && '-gpu' || '' }}
-          docker tag \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest${{ matrix.variant == 'gpu' && '-gpu' || '' }}
-          docker push --all-tags ghcr.io/${{ github.repository }}/shmtu-ocr-server
+      - name: Build and push to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: ocr
+          file: ocr/Dockerfile
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            USE_GPU=${{ matrix.use_gpu }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest${{ matrix.tag_suffix }}
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: type=gha,scope=${{ matrix.variant }},mode=max
 
   push-dockerhub:
     runs-on: ubuntu-latest
-    needs: [prepare-environment, build-docker-image]
+    needs: [prepare-environment, build-and-push-ghcr]
     strategy:
       matrix:
         include:
           - variant: cpu
+            tag_suffix: ""
           - variant: gpu
+            tag_suffix: "-gpu"
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
       - name: Export program version
         run: |
           echo "PROGRAM_VERSION=${{ needs.prepare-environment.outputs.program-version }}" >> $GITHUB_ENV
 
-      - name: Download artifact
-        uses: actions/download-artifact@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          name: shmtu-ocr-server-${{ matrix.variant }}
-          path: .
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -185,40 +136,35 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Import image and push to Docker Hub
+      - name: Copy multi-arch image from GHCR to Docker Hub
         run: |
-          docker load --input shmtu-ocr-server-${{ matrix.variant }}/image.tar
-          SUFFIX="${{ matrix.variant == 'gpu' && '-gpu' || '' }}"
-          docker tag \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }} \
-            ${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${SUFFIX}
-          docker tag \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest \
-            ${{ env.DOCKER_HUB_REPO }}:latest${SUFFIX}
-          docker push ${{ env.DOCKER_HUB_REPO }} --all-tags
+          docker buildx imagetools create \
+            --tag ${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }} \
+            --tag ${{ env.DOCKER_HUB_REPO }}:latest${{ matrix.tag_suffix }} \
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}
 
   push-aliyun:
     runs-on: ubuntu-latest
-    needs: [prepare-environment, build-docker-image]
+    needs: [prepare-environment, build-and-push-ghcr]
     strategy:
       matrix:
         include:
           - variant: cpu
+            tag_suffix: ""
           - variant: gpu
+            tag_suffix: "-gpu"
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
       - name: Export program version
         run: |
           echo "PROGRAM_VERSION=${{ needs.prepare-environment.outputs.program-version }}" >> $GITHUB_ENV
           echo "ACR_REGISTRY=${{ needs.prepare-environment.outputs.acr-registry }}" >> $GITHUB_ENV
 
-      - name: Download artifact
-        uses: actions/download-artifact@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          name: shmtu-ocr-server-${{ matrix.variant }}
-          path: .
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
@@ -230,14 +176,9 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Import image and push to Aliyun ACR
+      - name: Copy multi-arch image from GHCR to Aliyun ACR
         run: |
-          docker load --input shmtu-ocr-server-${{ matrix.variant }}/image.tar
-          SUFFIX="${{ matrix.variant == 'gpu' && '-gpu' || '' }}"
-          docker tag \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }} \
-            ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${SUFFIX}
-          docker tag \
-            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest \
-            ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:latest${SUFFIX}
-          docker push ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }} --all-tags
+          docker buildx imagetools create \
+            --tag ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }} \
+            --tag ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:latest${{ matrix.tag_suffix }} \
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}

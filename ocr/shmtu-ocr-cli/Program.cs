@@ -40,7 +40,7 @@ async Task<int> HandleImageCommand(string[] args)
     var mode = GetOption(args, "--mode", "local");
     var host = GetOption(args, "--host", "127.0.0.1");
     var port = int.Parse(GetOption(args, "--port", "21601"));
-    var url = GetOption(args, "--url", "http://127.0.0.1:5000");
+    var url = GetOption(args, "--url", "http://127.0.0.1:21600");
     var modelDir = GetOption(args, "--model-dir", AppContext.BaseDirectory);
 
     if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
@@ -87,7 +87,7 @@ async Task<int> HandleTestCommand(string[] args)
     var mode = GetOption(args, "--mode", "tcp");
     var host = GetOption(args, "--host", "127.0.0.1");
     var port = int.Parse(GetOption(args, "--port", "21601"));
-    var url = GetOption(args, "--url", "http://127.0.0.1:5000");
+    var url = GetOption(args, "--url", "http://127.0.0.1:21600");
     var rounds = int.Parse(GetOption(args, "--rounds", "10"));
 
     Console.WriteLine($"验证码识别测试 - 模式: {mode}, 轮次: {rounds}");
@@ -144,7 +144,7 @@ async Task<int> HandleTestCommand(string[] args)
 
 async Task<int> HandleHealthCommand(string[] args)
 {
-    var url = GetOption(args, "--url", "http://127.0.0.1:5000");
+    var url = GetOption(args, "--url", "http://127.0.0.1:21600");
 
     using var client = new OcrHttpClient(url);
     var health = await client.HealthCheckAsync();
@@ -295,9 +295,9 @@ void PrintUsage()
     Console.WriteLine("上海海事大学验证码 OCR 命令行工具");
     Console.WriteLine();
     Console.WriteLine("用法:");
-    Console.WriteLine("  shmtu-ocr-cli image <path> --mode local|tcp|restful [--host 127.0.0.1] [--port 21601] [--url http://127.0.0.1:5000]");
-    Console.WriteLine("  shmtu-ocr-cli test --mode tcp|restful [--host 127.0.0.1] [--port 21601] [--url http://127.0.0.1:5000] [--rounds 10]");
-    Console.WriteLine("  shmtu-ocr-cli health --url http://127.0.0.1:5000");
+    Console.WriteLine("  shmtu-ocr-cli image <path> --mode local|tcp|restful [--host 127.0.0.1] [--port 21601] [--url http://127.0.0.1:21600]");
+    Console.WriteLine("  shmtu-ocr-cli test --mode tcp|restful [--host 127.0.0.1] [--port 21601] [--url http://127.0.0.1:21600] [--rounds 10]");
+    Console.WriteLine("  shmtu-ocr-cli health --url http://127.0.0.1:21600");
     Console.WriteLine("  shmtu-ocr-cli download-model [--model-dir ./models]");
     Console.WriteLine();
     Console.WriteLine("命令:");
@@ -310,7 +310,7 @@ void PrintUsage()
     Console.WriteLine("  --mode             识别模式: local(本地ONNX), tcp(TCP远端), restful(RESTful远端)");
     Console.WriteLine("  --host             TCP 服务器地址 (默认: 127.0.0.1)");
     Console.WriteLine("  --port             TCP 服务器端口 (默认: 21601)");
-    Console.WriteLine("  --url              RESTful 服务器地址 (默认: http://127.0.0.1:5000)");
+    Console.WriteLine("  --url              RESTful 服务器地址 (默认: http://127.0.0.1:21600)");
     Console.WriteLine("  --rounds           测试轮次 (默认: 10)");
     Console.WriteLine("  --model-dir        本地模型目录");
 }

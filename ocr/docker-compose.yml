@@ -14,12 +14,12 @@ services:
     container_name: shmtu-ocr-server
     restart: unless-stopped
     ports:
-      - "${HTTP_PORT:-5000}:5000"
+      - "${HTTP_PORT:-21600}:21600"
       - "${TCP_PORT:-21601}:21601"
     volumes:
       - ./models:/app/models:ro
     environment:
-      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_URLS=http://+:21600
       - OcrServer__ModelDirectory=/app/models
       - OcrServer__TcpPort=21601
       - OcrServer__TcpListenAddress=0.0.0.0
@@ -28,7 +28,7 @@ services:
       - OcrServer__GpuDeviceId=${GPU_DEVICE_ID:-0}
       - ASPNETCORE_ENVIRONMENT=Production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:21600/api/health"]
       interval: 30s
       timeout: 5s
       start_period: 30s

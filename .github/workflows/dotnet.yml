@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # ============================================================
   # 1. Build & Pack
@@ -21,11 +25,6 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: (.Net)Restore dependencies
         run: dotnet restore
@@ -93,7 +92,8 @@ jobs:
         with:
           dotnet-version: "8.0.x"
           source-url: https://nuget.pkg.github.com/a645162/index.json
-          nuget-auth-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
       - name: Push to GitHub Packages
