@@ -1,0 +1,25 @@
+services:
+  shmtu-ocr-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shmtu-ocr-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      - "21601:21601"
+    volumes:
+      - ./models:/app/models:ro
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - OcrServer__ModelDirectory=/app/models
+      - OcrServer__TcpPort=21601
+      - OcrServer__TcpListenAddress=0.0.0.0
+      - OcrServer__PoolSize=0
+      - ASPNETCORE_ENVIRONMENT=Production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3

@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+models/
+shmtu-ocr-onnx-demo/
+shmtu-ocr-onnx-demo-gui/
+shmtu-ocr-onnx-tests/
+.git
+.gitignore
+*.md
+*.py
+*.sh
+**/NuGet.Config
