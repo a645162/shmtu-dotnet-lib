@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>shmtu.captcha.ocr.cli</RootNamespace>
+        <AssemblyName>shmtu-ocr-cli</AssemblyName>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\shmtu-ocr-onnx-lib\shmtu-ocr-onnx-lib.csproj" />
+    </ItemGroup>
+
+</Project>
