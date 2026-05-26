@@ -3,8 +3,11 @@ name: Build and publish to NuGet
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*", "*" ]
   pull_request:
     branches: [ "main" ]
+  release:
+    types: [ published ]
 
 permissions:
   contents: read
@@ -52,6 +55,7 @@ jobs:
   # 2. Push to NuGet.org (并行)
   # ============================================================
   push-nuget-org:
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'release' && github.event.action == 'published')
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -70,6 +74,11 @@ jobs:
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "NUGET_API_KEY is not configured."
+            exit 1
+          fi
+
           for f in *.nupkg; do
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
@@ -78,6 +87,7 @@ jobs:
   # 3. Push to GitHub Packages (并行)
   # ============================================================
   push-github-packages:
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'release' && github.event.action == 'published')
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -91,13 +101,11 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
-          source-url: https://nuget.pkg.github.com/a645162/index.json
-        env:
-          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Push to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for f in *.nupkg; do
-            dotnet nuget push "$f" --source github --skip-duplicate
+            dotnet nuget push "$f" --api-key "$GITHUB_TOKEN" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --skip-duplicate
           done
