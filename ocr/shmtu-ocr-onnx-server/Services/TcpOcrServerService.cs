@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Diagnostics;
 using Microsoft.Extensions.Options;
 
 namespace shmtu.captcha.onnx.server.Services;
@@ -44,6 +45,7 @@ public class TcpOcrServerService : BackgroundService
                 try
                 {
                     client = await listener.AcceptAsync(stoppingToken);
+                    _logger.LogDebug("Accepted TCP OCR client | Remote={Remote}", client.RemoteEndPoint?.ToString() ?? "unknown");
                 }
                 catch (OperationCanceledException)
                 {
@@ -66,6 +68,7 @@ public class TcpOcrServerService : BackgroundService
     private async Task HandleClientAsync(Socket client, CancellationToken ct)
     {
         var remote = client.RemoteEndPoint?.ToString() ?? "unknown";
+        var requestStopwatch = Stopwatch.StartNew();
         _logger.LogDebug("[{Remote}] Connected", remote);
 
         try
@@ -88,7 +91,15 @@ public class TcpOcrServerService : BackgroundService
 
             var resultBytes = Encoding.UTF8.GetBytes(resultText);
             await client.SendAsync(resultBytes, SocketFlags.None, ct);
-            _logger.LogDebug("[{Remote}] Result: {Result}", remote, resultText);
+            requestStopwatch.Stop();
+            _logger.LogInformation(
+                "[{Remote}] TCP OCR completed | Success={Success} | RequestBytes={RequestBytes} | ResponseBytes={ResponseBytes} | Expression={Expression} | ElapsedMs={ElapsedMs}",
+                remote,
+                response.Success,
+                imageData.Length,
+                resultBytes.Length,
+                resultText,
+                requestStopwatch.ElapsedMilliseconds);
         }
         catch (OperationCanceledException)
         {
@@ -105,7 +116,7 @@ public class TcpOcrServerService : BackgroundService
         finally
         {
             try { client.Close(); } catch { /* ignore */ }
-            _logger.LogDebug("[{Remote}] Disconnected", remote);
+            _logger.LogDebug("[{Remote}] Disconnected | ElapsedMs={ElapsedMs}", remote, requestStopwatch.ElapsedMilliseconds);
         }
     }
 

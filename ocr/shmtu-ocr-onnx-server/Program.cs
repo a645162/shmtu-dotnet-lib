@@ -11,17 +11,54 @@ builder.Services.AddSingleton<OcrService>();
 builder.Services.AddHostedService<TcpOcrServerService>();
 
 var app = builder.Build();
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+app.Use(async (context, next) =>
+{
+    var requestStopwatch = Stopwatch.StartNew();
+    logger.LogInformation(
+        "HTTP request started | Method={Method} | Path={Path} | RemoteIp={RemoteIp} | ContentLength={ContentLength}",
+        context.Request.Method,
+        context.Request.Path,
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        context.Request.ContentLength);
+
+    try
+    {
+        await next();
+        requestStopwatch.Stop();
+        logger.LogInformation(
+            "HTTP request finished | Method={Method} | Path={Path} | StatusCode={StatusCode} | ElapsedMs={ElapsedMs}",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode,
+            requestStopwatch.ElapsedMilliseconds);
+    }
+    catch (Exception ex)
+    {
+        requestStopwatch.Stop();
+        logger.LogError(
+            ex,
+            "HTTP request failed | Method={Method} | Path={Path} | ElapsedMs={ElapsedMs}",
+            context.Request.Method,
+            context.Request.Path,
+            requestStopwatch.ElapsedMilliseconds);
+        throw;
+    }
+});
 
 // Initialize OCR service (download models if needed, pre-warm pool)
 var ocrService = app.Services.GetRequiredService<OcrService>();
+logger.LogInformation("Initializing OCR service");
 await ocrService.InitializeAsync();
 
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("OCR service initialized. Models loaded: {Loaded}, Pool size: {Size}",
     ocrService.ModelsLoaded, ocrService.PoolSize);
 
 app.MapGet("/api/health", () =>
 {
+    logger.LogDebug("Health check requested | ModelsLoaded={ModelsLoaded} | PoolSize={PoolSize}",
+        ocrService.ModelsLoaded, ocrService.PoolSize);
     return Results.Ok(new HealthResponse
     {
         Status = "healthy",
@@ -33,7 +70,10 @@ app.MapGet("/api/health", () =>
 app.MapPost("/api/ocr", (OcrRequest? request) =>
 {
     if (request?.ImageBase64 == null)
+    {
+        logger.LogWarning("OCR request rejected: missing ImageBase64 payload");
         return Results.BadRequest(new OcrResponse { Success = false, Error = "ImageBase64 is required" });
+    }
 
     byte[] imageBytes;
     try
@@ -42,13 +82,20 @@ app.MapPost("/api/ocr", (OcrRequest? request) =>
     }
     catch (FormatException)
     {
+        logger.LogWarning("OCR request rejected: invalid base64 payload");
         return Results.BadRequest(new OcrResponse { Success = false, Error = "Invalid base64 string" });
     }
 
+    logger.LogInformation("OCR request accepted | ImageBytes={ImageBytes}", imageBytes.Length);
     var sw = Stopwatch.StartNew();
     var result = ocrService.Predict(imageBytes);
     sw.Stop();
-    logger.LogInformation("OCR completed in {Elapsed}ms, Success={Success}", sw.ElapsedMilliseconds, result.Success);
+    logger.LogInformation(
+        "OCR completed | ElapsedMs={ElapsedMs} | Success={Success} | Expression={Expression} | Result={Result}",
+        sw.ElapsedMilliseconds,
+        result.Success,
+        result.Expression,
+        result.Result);
 
     return Results.Ok(result);
 });
@@ -56,7 +103,10 @@ app.MapPost("/api/ocr", (OcrRequest? request) =>
 app.MapPost("/api/ocr/upload", async (IFormFile? file) =>
 {
     if (file == null || file.Length == 0)
+    {
+        logger.LogWarning("OCR upload request rejected: missing file");
         return Results.BadRequest(new OcrResponse { Success = false, Error = "Image file is required" });
+    }
 
     byte[] imageBytes;
     using (var ms = new MemoryStream())
@@ -65,10 +115,21 @@ app.MapPost("/api/ocr/upload", async (IFormFile? file) =>
         imageBytes = ms.ToArray();
     }
 
+    logger.LogInformation(
+        "OCR upload request accepted | FileName={FileName} | ContentType={ContentType} | FileLength={FileLength} | ImageBytes={ImageBytes}",
+        file.FileName,
+        file.ContentType,
+        file.Length,
+        imageBytes.Length);
     var sw = Stopwatch.StartNew();
     var result = ocrService.Predict(imageBytes);
     sw.Stop();
-    logger.LogInformation("OCR upload completed in {Elapsed}ms, Success={Success}", sw.ElapsedMilliseconds, result.Success);
+    logger.LogInformation(
+        "OCR upload completed | ElapsedMs={ElapsedMs} | Success={Success} | Expression={Expression} | Result={Result}",
+        sw.ElapsedMilliseconds,
+        result.Success,
+        result.Expression,
+        result.Result);
 
     return Results.Ok(result);
 }).DisableAntiforgery();

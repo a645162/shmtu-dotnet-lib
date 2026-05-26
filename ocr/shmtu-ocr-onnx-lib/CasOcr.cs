@@ -35,21 +35,24 @@ public sealed class CasOcr : IDisposable
     public bool IsLoaded => _backend.IsLoaded;
 
     public bool CheckModelIsExist() => CasOnnxBackend.CheckModelIsExist(ModelDirectoryPath);
+    public string[] GetMissingModelFiles() => CasOnnxBackend.GetMissingModelFiles(ModelDirectoryPath);
 
     /// <summary>
     /// 检查模型；缺失则下载。返回是否最终满足条件（已存在或下载成功）。
     /// </summary>
     public async Task<bool> EnsureModelsAsync(
         IProgress<float>? progress = null,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null,
+        Action<string>? log = null)
     {
         if (CheckModelIsExist())
         {
             progress?.Report(100f);
+            log?.Invoke($"模型文件已存在: {ModelDirectoryPath}");
             return true;
         }
 
-        return await CasOnnxBackend.DownloadModelAsync(ModelDirectoryPath, progress, httpClient);
+        return await CasOnnxBackend.DownloadModelAsync(ModelDirectoryPath, progress, httpClient, log);
     }
 
     public bool LoadModel()

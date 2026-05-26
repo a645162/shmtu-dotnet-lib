@@ -28,20 +28,41 @@ public sealed class CasOnnxBackend : IDisposable
                File.Exists(Path.Combine(basePath, ConstValue.ModelOnnxDigitFp32));
     }
 
+    public static string[] GetMissingModelFiles(string directoryPath)
+    {
+        var basePath = Path.GetFullPath(directoryPath);
+        return ConstValue.AllModelFiles
+            .Where(fileName => !File.Exists(Path.Combine(basePath, fileName)))
+            .ToArray();
+    }
+
     public static async Task<bool> DownloadModelAsync(
         string directoryPath,
         IProgress<float>? progress = null,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null,
+        Action<string>? log = null)
     {
         directoryPath = Path.GetFullPath(directoryPath);
-        if (!Directory.Exists(directoryPath)) Directory.CreateDirectory(directoryPath);
+        if (!Directory.Exists(directoryPath))
+        {
+            Directory.CreateDirectory(directoryPath);
+            log?.Invoke($"创建模型目录: {directoryPath}");
+        }
 
         var ownClient = httpClient is null;
         var client = httpClient ?? new HttpClient();
 
         try
         {
-            var files = ConstValue.AllModelFiles;
+            var files = GetMissingModelFiles(directoryPath);
+            if (files.Length == 0)
+            {
+                log?.Invoke($"模型目录已完整，无需下载: {directoryPath}");
+                progress?.Report(100f);
+                return true;
+            }
+
+            log?.Invoke($"开始下载 {files.Length} 个缺失模型文件到 {directoryPath}");
             var increment = 100f / files.Length;
 
             for (var i = 0; i < files.Length; i++)
@@ -51,20 +72,24 @@ public sealed class CasOnnxBackend : IDisposable
                 var localPath = Path.Combine(directoryPath, fileName);
 
                 var start = i * increment;
+                log?.Invoke($"开始下载模型文件 {i + 1}/{files.Length}: {fileName} <- {url}");
                 await NetworkFile.DownloadFileAsync(client, url, localPath, new Progress<float>(p =>
                 {
                     var adjusted = start + p / 100f * increment;
                     if (adjusted > 100) adjusted = 100;
                     progress?.Report(adjusted);
                 }));
+                var fileInfo = new FileInfo(localPath);
+                log?.Invoke($"模型文件下载完成: {fileName} ({fileInfo.Length} bytes)");
             }
 
             progress?.Report(100f);
+            log?.Invoke($"所有模型文件下载完成: {directoryPath}");
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"模型下载出错：{ex.Message}");
+            log?.Invoke($"模型下载出错: {ex.Message}");
             return false;
         }
         finally
@@ -84,7 +109,6 @@ public sealed class CasOnnxBackend : IDisposable
         if (useGpu)
         {
             options.AppendExecutionProvider_CUDA(gpuDeviceId);
-            Console.WriteLine($"[OCR] 使用 CUDA GPU 设备 {gpuDeviceId}");
         }
 #endif
 
