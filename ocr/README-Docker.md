@@ -22,7 +22,7 @@ mkdir -p models
 # - resnet34_digit_latest.onnx (81.2 MB)
 ```
 
-> 如果 models 目录为空，服务启动时会自动从 gitee.com 下载模型文件。
+> 如果 `models/` 目录为空，服务启动时会自动下载模型文件，因此挂载目录必须可写。
 
 ### 2. 使用 Docker Compose 启动
 
@@ -67,7 +67,7 @@ docker run -d \
   --name shmtu-ocr-server \
   -p 21600:21600 \
   -p 21601:21601 \
-  -v $(pwd)/models:/app/models:ro \
+  -v $(pwd)/models:/app/models \
   -e OcrServer__ModelDirectory=/app/models \
   -e OcrServer__TcpPort=21601 \
   -e OcrServer__TcpListenAddress=0.0.0.0 \

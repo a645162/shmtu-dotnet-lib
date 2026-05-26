@@ -20,7 +20,7 @@ services:
       - "${HTTP_PORT:-21600}:21600"
       - "${TCP_PORT:-21601}:21601"
     volumes:
-      - ./models:/app/models:ro
+      - ./models:/app/models
     environment:
       - ASPNETCORE_URLS=http://+:21600
       - OcrServer__ModelDirectory=/app/models

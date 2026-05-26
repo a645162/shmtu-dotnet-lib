@@ -66,7 +66,7 @@ docker run -d \
   --name shmtu-ocr-server \
   -p 21600:21600 \
   -p 21601:21601 \
-  -v /path/to/models:/app/models:ro \
+  -v /path/to/models:/app/models \
   a645162/shmtu-ocr-server:latest
 ```
 
@@ -77,7 +77,7 @@ docker run -d \
   --name shmtu-ocr-server-gpu \
   -p 21600:21600 \
   -p 21601:21601 \
-  -v /path/to/models:/app/models:ro \
+  -v /path/to/models:/app/models \
   --gpus all \
   a645162/shmtu-ocr-server:latest-gpu
 ```
