@@ -100,6 +100,19 @@ public sealed class EpayAuth : IDisposable
     }
 
     /// <summary>
+    /// 检查 TGC 是否仍有效（GetExecutionString 返回 302 时说明 TGC 有效，无需提交登录）。
+    /// </summary>
+    public async Task<bool> TryReuseTgcAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(_loginUrl))
+            throw new InvalidOperationException("尚未探测登录状态，请先调用 ProbeLoginAsync");
+
+        var execution = await CasAuth.GetExecutionString(HttpClient, _loginUrl, cancellationToken);
+        // 空字符串表示 TGC 有效，CAS 自动认证并跟随了重定向
+        return string.IsNullOrEmpty(execution);
+    }
+
+    /// <summary>
     /// 完整的"准备挑战 + 让 resolver 解 + 提交登录"流程，便于调用方一行搞定。
     /// </summary>
     public async Task<LoginSubmitResult> SubmitLoginAsync(
@@ -107,6 +120,15 @@ public sealed class EpayAuth : IDisposable
         string password,
         CancellationToken cancellationToken = default)
     {
+        // TGC 仍有效时，CAS 已自动认证，无需提交登录表单
+        if (await TryReuseTgcAsync(cancellationToken))
+        {
+            if (await TestLoginStatusAsync(cancellationToken))
+                return new LoginSubmitResult.Success();
+            // TGC 认证后 session 仍无效（异常情况），返回失败让调用方用干净客户端重试
+            return new LoginSubmitResult.Failure("TGC 自动认证后 session 仍无效，需要清除旧 cookie 重新登录");
+        }
+
         var challenge = await PrepareChallengeAsync(cancellationToken);
         var answer = await CaptchaResolver.ResolveAsync(challenge.CaptchaImage, cancellationToken);
         var validateCode = answer.Kind == CaptchaAnswerKind.Expression

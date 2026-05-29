@@ -21,17 +21,26 @@ public static class CasAuth
     {
         using var response = await client.HttpClient.GetAsync(url, cancellationToken);
 
-        if (response.StatusCode != HttpStatusCode.OK)
+        if (response.StatusCode == HttpStatusCode.OK)
         {
-            Console.WriteLine($"Get execution string error:{(int)response.StatusCode}");
-            return "";
+            var htmlCode = await response.Content.ReadAsStringAsync(cancellationToken);
+            var document = new HtmlDocument();
+            document.LoadHtml(htmlCode);
+            var element = document.DocumentNode.SelectSingleNode("//input[@name='execution']");
+            return (element?.GetAttributeValue("value", "") ?? "").Trim();
         }
 
-        var htmlCode = await response.Content.ReadAsStringAsync(cancellationToken);
-        var document = new HtmlDocument();
-        document.LoadHtml(htmlCode);
-        var element = document.DocumentNode.SelectSingleNode("//input[@name='execution']");
-        return (element?.GetAttributeValue("value", "") ?? "").Trim();
+        if (response.StatusCode == HttpStatusCode.Redirect)
+        {
+            // TGC 仍有效 — CAS 自动认证，跟随重定向以建立目标站点的 session
+            var location = response.Headers.Location?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(location))
+                await CasRedirect(client, location, cancellationToken);
+            return ""; // 空字符串表示无需提交登录表单
+        }
+
+        Console.WriteLine($"Get execution string error:{(int)response.StatusCode}");
+        return "";
     }
 
     /// <summary>

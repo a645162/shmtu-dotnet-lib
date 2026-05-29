@@ -57,13 +57,47 @@ logger.LogInformation("OCR service initialized. Models loaded: {Loaded}, Pool si
 
 app.MapGet("/api/health", () =>
 {
-    logger.LogDebug("Health check requested | ModelsLoaded={ModelsLoaded} | PoolSize={PoolSize}",
-        ocrService.ModelsLoaded, ocrService.PoolSize);
+    var serverName = app.Configuration.GetSection("OcrServer:ServerName").Get<string?>();
     return Results.Ok(new HealthResponse
     {
         Status = "healthy",
         ModelsLoaded = ocrService.ModelsLoaded,
-        PoolSize = ocrService.PoolSize
+        PoolSize = ocrService.PoolSize,
+        ServerName = serverName
+    });
+});
+
+app.MapGet("/api/status", () =>
+{
+    var loaded = ocrService.ModelsLoaded;
+    var poolSize = ocrService.PoolSize;
+    var total = ocrService.TotalRequests;
+    var success = ocrService.SuccessCount;
+    var failure = ocrService.FailureCount;
+    var uptime = ocrService.UptimeSeconds;
+
+    string status = loaded ? "healthy" : "unavailable";
+    string availabilityLevel = !loaded ? "unavailable" : "available";
+    string reason = loaded ? "" : "Models not loaded";
+
+    logger.LogDebug("Status requested | Status={Status} | ModelsLoaded={ModelsLoaded} | Total={Total}",
+        status, loaded, total);
+
+    return Results.Ok(new StatusResponse
+    {
+        Status = status,
+        AvailabilityLevel = availabilityLevel,
+        Reason = reason,
+        ModelsLoaded = loaded,
+        PoolSize = poolSize,
+        QueueCapacity = poolSize,
+        PendingRequests = 0,
+        ActiveWorkers = poolSize,
+        TotalRequests = total,
+        SuccessCount = success,
+        FailureCount = failure,
+        UptimeSeconds = uptime,
+        ServerName = app.Configuration.GetSection("OcrServer:ServerName").Get<string?>()
     });
 });
 

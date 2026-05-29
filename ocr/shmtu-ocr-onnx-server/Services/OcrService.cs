@@ -15,6 +15,7 @@ public class OcrServerConfig
     public string TcpListenAddress { get; set; } = "0.0.0.0";
     public string ExecutionProvider { get; set; } = "CPU";
     public int GpuDeviceId { get; set; } = 0;
+    public string? ServerName { get; set; }
 }
 
 public class OcrService : IDisposable
@@ -26,9 +27,18 @@ public class OcrService : IDisposable
     private readonly bool _useGpu;
     private readonly int _gpuDeviceId;
     private bool _modelsLoaded;
+    private readonly Stopwatch _uptimeStopwatch = Stopwatch.StartNew();
+
+    private long _totalRequests;
+    private long _successCount;
+    private long _failureCount;
 
     public int PoolSize => _poolSize;
     public bool ModelsLoaded => _modelsLoaded;
+    public long TotalRequests => Interlocked.Read(ref _totalRequests);
+    public long SuccessCount => Interlocked.Read(ref _successCount);
+    public long FailureCount => Interlocked.Read(ref _failureCount);
+    public long UptimeSeconds => _uptimeStopwatch.ElapsedMilliseconds / 1000;
 
     public OcrService(IOptions<OcrServerConfig> config, ILogger<OcrService> logger)
     {
@@ -164,12 +174,14 @@ public class OcrService : IDisposable
 
     public OcrResponse Predict(byte[] imageBytes)
     {
+        Interlocked.Increment(ref _totalRequests);
         var ocr = _pool.Get();
         try
         {
             if (!ocr.IsLoaded && !ocr.LoadModel())
             {
                 _logger.LogError("OCR prediction aborted because model load failed | ImageBytes={ImageBytes}", imageBytes.Length);
+                Interlocked.Increment(ref _failureCount);
                 return new OcrResponse { Success = false, Error = "Model not loaded" };
             }
 
@@ -181,6 +193,12 @@ public class OcrService : IDisposable
                 imageBytes.Length,
                 expr,
                 result);
+
+            if (success)
+                Interlocked.Increment(ref _successCount);
+            else
+                Interlocked.Increment(ref _failureCount);
+
             return new OcrResponse
             {
                 Success = success,
@@ -195,6 +213,7 @@ public class OcrService : IDisposable
         }
         catch (Exception ex)
         {
+            Interlocked.Increment(ref _failureCount);
             _logger.LogError(ex, "OCR prediction failed | ImageBytes={ImageBytes}", imageBytes.Length);
             return new OcrResponse { Success = false, Error = ex.Message };
         }

@@ -88,3 +88,14 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:21600/api/health || exit 1
 
 ENTRYPOINT ["./shmtu-ocr-onnx-server"]
+
+# ============================================================
+# Bundled variants (with model weights included)
+# ============================================================
+FROM runtime-cpu AS runtime-cpu-bundled
+
+COPY models/ /app/models/
+
+FROM runtime-gpu AS runtime-gpu-bundled
+
+COPY models/ /app/models/

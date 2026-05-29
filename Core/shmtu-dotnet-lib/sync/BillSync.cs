@@ -36,6 +36,17 @@ public sealed record SyncOptions
 }
 
 /// <summary>
+/// 页面级同步进度。对齐 Rust 的 <c>sync::SyncProgress</c>。
+/// </summary>
+public sealed record PageSyncProgress
+{
+    public int CurrentPage { get; init; }
+    public int TotalPages { get; init; }
+    public int NewCount { get; init; }
+    public int PagesFetched { get; init; }
+}
+
+/// <summary>
 /// 同步结果。对齐 Rust 的 <c>sync::SyncResult</c>。
 /// </summary>
 public sealed record SyncResult
@@ -63,6 +74,7 @@ public static class BillSync
         EpayAuth epay,
         IBillStore store,
         SyncOptions? options = null,
+        IProgress<PageSyncProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         options ??= new SyncOptions();
@@ -106,6 +118,14 @@ public static class BillSync
                     newBills.Add(bill);
                 }
             }
+
+            progress?.Report(new PageSyncProgress
+            {
+                CurrentPage = pageNo,
+                TotalPages = parser.TotalPagesCount,
+                NewCount = newBills.Count,
+                PagesFetched = pagesFetched,
+            });
 
             if (earlyStopped) break;
 

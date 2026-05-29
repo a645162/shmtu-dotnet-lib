@@ -8,6 +8,10 @@ on:
       - "ocr/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   DOCKER_HUB_REPO: a645162/shmtu-ocr-server
   ALIYUN_ACR_REGION: cn-shanghai
@@ -62,15 +66,26 @@ jobs:
         include:
           - variant: cpu
             target: runtime-cpu
+            bundled_target: runtime-cpu-bundled
             use_gpu: "false"
             tag_suffix: ""
           - variant: gpu
             target: runtime-gpu
+            bundled_target: runtime-gpu-bundled
             use_gpu: "true"
             tag_suffix: "-gpu"
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Download model weights
+        run: |
+          MODEL_BASE="https://github.com/a645162/shmtu-cas-ocr-model/releases/download/v1.0-ONNX"
+          mkdir -p ocr/models
+          for f in resnet18_operator_latest.onnx resnet18_equal_symbol_latest.onnx resnet34_digit_latest.onnx; do
+            echo "Downloading ${f}..."
+            curl -fSL -o "ocr/models/${f}" "${MODEL_BASE}/${f}"
+          done
 
       - name: Export program version
         run: |
@@ -89,7 +104,7 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push to GHCR
+      - name: Build and push base image to GHCR
         uses: docker/build-push-action@v5
         with:
           context: ocr
@@ -104,6 +119,22 @@ jobs:
             ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest${{ matrix.tag_suffix }}
           cache-from: type=gha,scope=${{ matrix.variant }}
           cache-to: type=gha,scope=${{ matrix.variant }},mode=max
+
+      - name: Build and push bundled image to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: ocr
+          file: ocr/Dockerfile
+          target: ${{ matrix.bundled_target }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            USE_GPU=${{ matrix.use_gpu }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}-bundled
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:latest${{ matrix.tag_suffix }}-bundled
+          cache-from: type=gha,scope=${{ matrix.variant }}-bundled
+          cache-to: type=gha,scope=${{ matrix.variant }}-bundled,mode=max
 
   push-dockerhub:
     runs-on: ubuntu-latest
@@ -142,6 +173,10 @@ jobs:
             --tag ${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }} \
             --tag ${{ env.DOCKER_HUB_REPO }}:latest${{ matrix.tag_suffix }} \
             ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}
+          docker buildx imagetools create \
+            --tag ${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}-bundled \
+            --tag ${{ env.DOCKER_HUB_REPO }}:latest${{ matrix.tag_suffix }}-bundled \
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}-bundled
 
   push-aliyun:
     runs-on: ubuntu-latest
@@ -182,3 +217,7 @@ jobs:
             --tag ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }} \
             --tag ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:latest${{ matrix.tag_suffix }} \
             ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}
+          docker buildx imagetools create \
+            --tag ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}-bundled \
+            --tag ${{ env.ACR_REGISTRY }}/${{ env.DOCKER_HUB_REPO }}:latest${{ matrix.tag_suffix }}-bundled \
+            ghcr.io/${{ github.repository }}/shmtu-ocr-server:${{ env.PROGRAM_VERSION }}${{ matrix.tag_suffix }}-bundled

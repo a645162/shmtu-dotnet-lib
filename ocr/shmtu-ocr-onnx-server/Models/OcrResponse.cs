@@ -22,4 +22,22 @@ public class HealthResponse
     public string Status { get; set; } = "healthy";
     public bool ModelsLoaded { get; set; }
     public int PoolSize { get; set; }
+    public string? ServerName { get; set; }
+}
+
+public class StatusResponse
+{
+    public string Status { get; set; } = "healthy";
+    public string AvailabilityLevel { get; set; } = "available";
+    public string Reason { get; set; } = "";
+    public bool ModelsLoaded { get; set; }
+    public int PoolSize { get; set; }
+    public int QueueCapacity { get; set; }
+    public int PendingRequests { get; set; }
+    public int ActiveWorkers { get; set; }
+    public long TotalRequests { get; set; }
+    public long SuccessCount { get; set; }
+    public long FailureCount { get; set; }
+    public long UptimeSeconds { get; set; }
+    public string? ServerName { get; set; }
 }

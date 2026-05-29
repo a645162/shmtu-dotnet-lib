@@ -19,8 +19,9 @@ services:
     ports:
       - "${HTTP_PORT:-21600}:21600"
       - "${TCP_PORT:-21601}:21601"
-    volumes:
-      - ./models:/app/models
+    # volumes:
+    #   # 模型文件映射 (bundled 镜像无需挂载)
+    #   - ./models:/app/models
     environment:
       - ASPNETCORE_URLS=http://+:21600
       - OcrServer__ModelDirectory=/app/models
