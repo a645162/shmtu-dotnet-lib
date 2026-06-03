@@ -62,6 +62,28 @@ public sealed class CasOnnxBackend : IDisposable
                 return true;
             }
 
+            // Fetch checksum file for integrity verification
+            Dictionary<string, string> checksums = new();
+            try
+            {
+                var checksumContent = await NetworkFile.DownloadStringAsync(
+                    client, ConstValue.ModelOnnxChecksumUrl);
+                foreach (var line in checksumContent.Split(
+                    '\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var parts = line.Split("  ", 2, StringSplitOptions.None);
+                    if (parts.Length == 2)
+                    {
+                        checksums[parts[1].Trim()] = parts[0].Trim().ToLowerInvariant();
+                    }
+                }
+                log?.Invoke($"已加载校验和文件，共 {checksums.Count} 条记录");
+            }
+            catch (Exception ex)
+            {
+                log?.Invoke($"警告: 无法下载校验和文件，将跳过完整性验证: {ex.Message}");
+            }
+
             log?.Invoke($"开始下载 {files.Length} 个缺失模型文件到 {directoryPath}");
             var increment = 100f / files.Length;
 
@@ -72,15 +94,56 @@ public sealed class CasOnnxBackend : IDisposable
                 var localPath = Path.Combine(directoryPath, fileName);
 
                 var start = i * increment;
-                log?.Invoke($"开始下载模型文件 {i + 1}/{files.Length}: {fileName} <- {url}");
-                await NetworkFile.DownloadFileAsync(client, url, localPath, new Progress<float>(p =>
+                const int maxAttempts = 3;
+                var success = false;
+
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
                 {
-                    var adjusted = start + p / 100f * increment;
-                    if (adjusted > 100) adjusted = 100;
-                    progress?.Report(adjusted);
-                }));
-                var fileInfo = new FileInfo(localPath);
-                log?.Invoke($"模型文件下载完成: {fileName} ({fileInfo.Length} bytes)");
+                    log?.Invoke($"开始下载模型文件 {i + 1}/{files.Length}: {fileName} <- {url}" +
+                        (attempt > 1 ? $" (重试 {attempt}/{maxAttempts})" : ""));
+                    await NetworkFile.DownloadFileAsync(client, url, localPath, new Progress<float>(p =>
+                    {
+                        var adjusted = start + p / 100f * increment;
+                        if (adjusted > 100) adjusted = 100;
+                        progress?.Report(adjusted);
+                    }));
+
+                    // Verify checksum if available
+                    if (checksums.TryGetValue(fileName, out var expectedHash))
+                    {
+                        var actualHash = await NetworkFile.ComputeSha256Async(localPath);
+                        if (actualHash == expectedHash)
+                        {
+                            var fileInfo = new FileInfo(localPath);
+                            log?.Invoke($"模型文件下载完成 (校验和通过): {fileName} ({fileInfo.Length} bytes)");
+                            success = true;
+                            break;
+                        }
+
+                        log?.Invoke($"校验和不匹配: {fileName} " +
+                            $"(期望: {expectedHash[..16]}..., 实际: {actualHash[..16]}...)");
+                        File.Delete(localPath);
+
+                        if (attempt < maxAttempts)
+                        {
+                            log?.Invoke($"将重新下载 {fileName}");
+                        }
+                    }
+                    else
+                    {
+                        // No checksum available, accept the download
+                        var fileInfo = new FileInfo(localPath);
+                        log?.Invoke($"模型文件下载完成 (无校验和): {fileName} ({fileInfo.Length} bytes)");
+                        success = true;
+                        break;
+                    }
+                }
+
+                if (!success)
+                {
+                    log?.Invoke($"模型文件下载失败: {fileName} (已重试 {maxAttempts} 次，校验和均不匹配)");
+                    return false;
+                }
             }
 
             progress?.Report(100f);

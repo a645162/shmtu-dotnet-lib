@@ -35,4 +35,17 @@ public static class NetworkFile
             }
         }
     }
+
+    public static async Task<string> ComputeSha256Async(string filePath)
+    {
+        using var stream = File.OpenRead(filePath);
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashBytes = await sha256.ComputeHashAsync(stream);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+    }
+
+    public static async Task<string> DownloadStringAsync(HttpClient client, string url)
+    {
+        return await client.GetStringAsync(url);
+    }
 }
