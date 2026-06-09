@@ -84,7 +84,7 @@ public sealed class CasOcr : IDisposable
         }
 
         return _version == ConstValue.ModelVersion.V2
-            ? await CasOnnxBackendV2.DownloadModelAsync(ModelDirectoryPath, progress, httpClient, log)
+            ? await CasOnnxBackendV2.DownloadModelAsync(ModelDirectoryPath, null, progress, httpClient, log)
             : await CasOnnxBackendV1.DownloadModelAsync(ModelDirectoryPath, progress, httpClient, log);
     }
 

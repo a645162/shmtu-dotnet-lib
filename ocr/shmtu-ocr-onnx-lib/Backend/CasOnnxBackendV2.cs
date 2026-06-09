@@ -38,16 +38,17 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
         return File.Exists(full) ? full : null;
     }
 
-    /// <summary>下载 v2 默认模型到 destDir。</summary>
+    /// <summary>下载 v2 默认模型到 destDir（tag=null 时自动解析最新 release）。</summary>
     public static Task<bool> DownloadModelAsync(
         string destDir,
+        string? tag,
         IProgress<float>? progress = null,
         HttpClient? httpClient = null,
         Action<string>? log = null)
     {
         return V2Downloader.DownloadAsync(
             destDir,
-            ConstValue.V2.DefaultTag,
+            tag,
             ConstValue.V2.DefaultBackbone,
             ConstValue.V2.DefaultPrecision,
             progress,

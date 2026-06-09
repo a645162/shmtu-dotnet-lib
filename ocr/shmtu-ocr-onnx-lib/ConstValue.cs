@@ -45,6 +45,15 @@ public static class ConstValue
     public static class V2
     {
         public const string DefaultTag = "v2.0.2";
+        public const uint MaxSupportedMajor = 2;
+        /// MINOR 上界:
+        /// * 0 表示锁 major+minor (v2.0.x)
+        /// * 正数 N 表示锁 major,允许 minor 0..=N
+        /// * uint.MaxValue 表示不限 minor,只锁 major
+        /// 当前版本支持到 v2.0,所以 0
+        public const uint MaxSupportedMinor = 0;
+        public const string GithubRepo = "a645162/shmtu-cas-ocr-model";
+        public const string GithubReleasesApi = "https://api.github.com/repos/a645162/shmtu-cas-ocr-model/releases";
         public const string DefaultBackbone = "mobilenet_v3_small";
         public const string DefaultPrecision = "fp16";
         public const string ModelFamily = "trislot_decoder";
