@@ -44,7 +44,13 @@
                     <TextBlock Text="模型目录：" VerticalAlignment="Center"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                    <TextBox Text="{Binding ModelDirectory}" Width="520" VerticalAlignment="Center"/>
+                    <TextBox Text="{Binding ModelDirectory}" Width="380" VerticalAlignment="Center"/>
+                    <TextBlock Text="版本：" VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                    <ComboBox ItemsSource="{Binding AvailableVersions}"
+                              SelectedItem="{Binding SelectedVersion}"
+                              Width="80" VerticalAlignment="Center"/>
                     <Button Content="检查 / 下载模型"
                             Command="{Binding EnsureModelsCommand}"
                             VerticalAlignment="Center"/>

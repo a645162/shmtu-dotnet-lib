@@ -6,7 +6,7 @@ using SkiaSharp;
 
 namespace shmtu.captcha.onnx.Backend;
 
-public sealed class CasOnnxBackend : IDisposable
+public sealed class CasOnnxBackendV1 : ICasOcrBackend
 {
     private InferenceSession? _sessionDigit;
     private InferenceSession? _sessionEqualSymbol;

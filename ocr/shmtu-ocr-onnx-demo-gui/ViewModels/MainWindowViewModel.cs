@@ -29,6 +29,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool _modelsReady;
     private bool _isBusy;
     private double _averageMs;
+    private ConstValue.ModelVersion _selectedVersion = ConstValue.DefaultVersion;
 
     private Bitmap? _currentPreview;
     private byte[]? _currentBytes;
@@ -39,16 +40,16 @@ public sealed class MainWindowViewModel : ObservableObject
     public MainWindowViewModel()
     {
         _modelDirectory = AppContext.BaseDirectory;
-        _ocr = new CasOcr(_modelDirectory);
+        _ocr = new CasOcr(_modelDirectory, version: _selectedVersion);
         _modelsReady = _ocr.CheckModelIsExist();
         if (_modelsReady)
         {
             _ocr.LoadModel();
-            _statusMessage = "模型已加载，可开始识别";
+            _statusMessage = $"模型已加载（{_ocr.Version}），可开始识别";
         }
         else
         {
-            _statusMessage = "模型缺失，请先点击「检查 / 下载模型」";
+            _statusMessage = $"模型缺失（{_ocr.Version}），请先点击「检查 / 下载模型」";
         }
 
         EnsureModelsCommand = new RelayCommand(async () => await EnsureModelsAsync(), () => !IsBusy);
@@ -122,6 +123,21 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public bool IsNotBusy => !IsBusy;
 
+    /// <summary>当前选中的模型版本（变更后必须重建 CasOcr 才能生效）。</summary>
+    public ConstValue.ModelVersion SelectedVersion
+    {
+        get => _selectedVersion;
+        set
+        {
+            if (!SetField(ref _selectedVersion, value)) return;
+            StatusMessage = $"已切换模型版本为 {value}（下次启动或重建客户端时生效）";
+        }
+    }
+
+    /// <summary>ComboBox 数据源：所有可用模型版本。</summary>
+    public IReadOnlyList<ConstValue.ModelVersion> AvailableVersions { get; } =
+        new[] { ConstValue.ModelVersion.V1, ConstValue.ModelVersion.V2 };
+
     public Bitmap? CurrentPreview
     {
         get => _currentPreview;
@@ -186,7 +202,7 @@ public sealed class MainWindowViewModel : ObservableObject
             if (ModelsReady)
             {
                 _ocr.LoadModel();
-                StatusMessage = "模型已加载，可开始识别";
+                StatusMessage = $"模型已加载（{_ocr.Version}），可开始识别";
             }
             else
             {
