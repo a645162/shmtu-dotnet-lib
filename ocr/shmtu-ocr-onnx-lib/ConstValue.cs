@@ -44,7 +44,7 @@ public static class ConstValue
     /// </summary>
     public static class V2
     {
-        public const string DefaultTag = "v2.0.4";
+        public const string DefaultTag = "v2.0.5";
         public const uint MaxSupportedMajor = 2;
         /// MINOR 上界:
         /// * 0 表示锁 major+minor (v2.0.x)
