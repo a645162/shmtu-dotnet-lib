@@ -58,6 +58,12 @@ public static class ConstValue
         public const string DefaultPrecision = "fp16";
         public const string ModelFamily = "trislot_decoder";
 
+        /// <summary>
+        /// v2 多模型 manifest 中默认模型的 asset_stem。
+        /// 需与 shmtu-cas-ocr-model release 根目录的 model-assets.json 保持一致。
+        /// </summary>
+        public const string DefaultAssetStem = "mobilenet_v3_small.trislot_decoder.v2_0";
+
         public const string ManifestName = "model-assets.json";
 
         public const string BaseUrlGithub =

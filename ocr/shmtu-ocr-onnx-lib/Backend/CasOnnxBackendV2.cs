@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using shmtu.captcha.onnx.ImageProcess;
@@ -38,13 +39,18 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
         return File.Exists(full) ? full : null;
     }
 
-    /// <summary>下载 v2 默认模型到 destDir（tag=null 时自动解析最新 release）。</summary>
+    /// <summary>
+    /// 下载 v2 默认模型到 destDir（tag=null 时自动解析最新 release）。
+    /// 可选 <paramref name="assetStem"/> 用于在 v2 多模型 manifest 中选择特定模型；
+    /// 留空则使用默认 backbone 匹配。
+    /// </summary>
     public static Task<bool> DownloadModelAsync(
         string destDir,
         string? tag,
         IProgress<float>? progress = null,
         HttpClient? httpClient = null,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        string? assetStem = null)
     {
         return V2Downloader.DownloadAsync(
             destDir,
@@ -53,7 +59,57 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
             ConstValue.V2.DefaultPrecision,
             progress,
             httpClient,
-            log);
+            log,
+            "github",
+            "gitee",
+            assetStem);
+    }
+
+    /// <summary>列出 v2 manifest 中所有可用模型（仅 v2 多模型 schema 有意义）。</summary>
+    public static Task<List<ModelInfo>> ListAvailableModelsAsync(
+        string? tag = null,
+        HttpClient? httpClient = null,
+        Action<string>? log = null)
+    {
+        return ListAvailableModelsInternalAsync(tag, httpClient, log);
+    }
+
+    private static async Task<List<ModelInfo>> ListAvailableModelsInternalAsync(
+        string? tag,
+        HttpClient? httpClient,
+        Action<string>? log)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            tag = await V2Downloader.ResolveLatestTagAsync(
+                ConstValue.V2.MaxSupportedMajor,
+                ConstValue.V2.MaxSupportedMinor,
+                ConstValue.V2.DefaultTag,
+                httpClient,
+                log);
+        }
+
+        var ownClient = httpClient is null;
+        var client = httpClient ?? new HttpClient();
+        try
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("shmtu-cas-ocr-dotnet/1.0");
+            var manifestUrl = $"{ConstValue.V2.BaseUrlGithub}/{tag}/{ConstValue.V2.ManifestName}";
+            var json = await client.GetStringAsync(manifestUrl);
+            var manifest = JsonSerializer.Deserialize<ReleaseManifest>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (manifest == null) return new List<ModelInfo>();
+            return V2Downloader.ListModelsFromManifest(manifest);
+        }
+        catch (Exception ex)
+        {
+            log?.Invoke($"[CasOnnxBackendV2] 列出模型失败: {ex.Message}");
+            return new List<ModelInfo>();
+        }
+        finally
+        {
+            if (ownClient) client.Dispose();
+        }
     }
 
     public bool LoadModel(string directoryPath, bool useGpu = false, int gpuDeviceId = 0)

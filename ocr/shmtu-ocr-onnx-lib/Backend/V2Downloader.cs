@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using shmtu.captcha.onnx.Utils;
 
 namespace shmtu.captcha.onnx.Backend;
@@ -7,7 +6,8 @@ namespace shmtu.captcha.onnx.Backend;
 /// <summary>
 /// v2 模型智能下载：
 /// 1) 拉取 {base}/{tag}/model-assets.json
-/// 2) 在 artifacts 中筛选 engine=onnx, backbone, precision
+/// 2) 在 models[*].artifacts（v2 多模型 schema）或顶层 artifacts（v1 扁平回退）中
+///    筛选 engine=onnx, backbone, precision
 /// 3) 下载每个 release_asset_name 到 destDir
 /// 4) 校验 SHA256；主源失败尝试备用 mirror
 /// </summary>
@@ -91,11 +91,16 @@ public static class V2Downloader
             && uint.TryParse(parts[1], out minor)
             && uint.TryParse(parts[2], out patch);
     }
+
     /// <summary>
     /// 下载 v2 模型（自动解析 tag）。当 <paramref name="tag"/> 为 null 时，
     /// 从 GitHub releases API 解析 v{MAX_SUPPORTED_MAJOR}.{≤MAX_SUPPORTED_MINOR}.x 范围内最新 tag，
     /// 失败则 fallback 到 <see cref="ConstValue.V2.DefaultTag"/>。
     /// </summary>
+    /// <param name="assetStem">
+    /// 可选的 asset_stem 过滤器（v2 多模型 manifest）。为 null 时匹配首个匹配 backbone+precision 的模型。
+    /// 旧 manifest（无 models 字段）忽略此参数。
+    /// </param>
     public static Task<bool> DownloadAsync(
         string destDir,
         string? tag,
@@ -105,10 +110,11 @@ public static class V2Downloader
         HttpClient? httpClient = null,
         Action<string>? log = null,
         string primaryMirror = "github",
-        string fallbackMirror = "gitee")
+        string fallbackMirror = "gitee",
+        string? assetStem = null)
     {
         return DownloadInternalAsync(destDir, tag, backbone, precision, progress, httpClient, log,
-            primaryMirror, fallbackMirror, autoResolve: true);
+            primaryMirror, fallbackMirror, autoResolve: true, assetStem: assetStem);
     }
 
     private static async Task<bool> DownloadInternalAsync(
@@ -121,7 +127,8 @@ public static class V2Downloader
         Action<string>? log,
         string primaryMirror,
         string fallbackMirror,
-        bool autoResolve)
+        bool autoResolve,
+        string? assetStem = null)
     {
         if (autoResolve && string.IsNullOrWhiteSpace(tag))
         {
@@ -177,23 +184,21 @@ public static class V2Downloader
                 {
                     log?.Invoke($"v2 智能下载：尝试 mirror={mirror}, manifest={manifestUrl}");
                     var manifestJson = await NetworkFile.DownloadStringAsync(client, manifestUrl);
-                    var manifest = JsonSerializer.Deserialize<V2Manifest>(manifestJson,
+                    var manifest = JsonSerializer.Deserialize<ReleaseManifest>(manifestJson,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    if (manifest == null || manifest.Artifacts == null)
+                    if (manifest == null)
                     {
                         log?.Invoke("v2 manifest 解析为空，跳过该 mirror");
                         continue;
                     }
 
-                    var artifact = manifest.Artifacts.FirstOrDefault(a =>
-                        string.Equals(a.Engine, "onnx", StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(a.Backbone, backbone, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(a.Precision, precision, StringComparison.OrdinalIgnoreCase));
-
+                    var artifact = ResolveArtifact(manifest, backbone, precision, assetStem, log);
                     if (artifact == null || artifact.Files == null || artifact.Files.Count == 0)
                     {
-                        log?.Invoke(
-                            $"v2 manifest 未匹配 (engine=onnx, backbone={backbone}, precision={precision})，跳过该 mirror");
+                        var filterDesc = assetStem is null
+                            ? $"engine=onnx, backbone={backbone}, precision={precision}"
+                            : $"assetStem={assetStem}, engine=onnx, backbone={backbone}, precision={precision}";
+                        log?.Invoke($"v2 manifest 未匹配 ({filterDesc})，跳过该 mirror");
                         continue;
                     }
 
@@ -268,43 +273,115 @@ public static class V2Downloader
         return File.Exists(Path.Combine(Path.GetFullPath(destDir), fileName));
     }
 
-    // ---- manifest DTO ----
-    private sealed class V2Manifest
-    {
-        [JsonPropertyName("schema_version")]
-        public int SchemaVersion { get; set; }
+    // ---- manifest 解析辅助 ----
 
-        [JsonPropertyName("artifacts")]
-        public List<V2Artifact>? Artifacts { get; set; }
+    /// <summary>
+    /// 列出 manifest 中的所有模型。优先返回 v2 多模型 schema 的 models；
+    /// 若 models 为空，则从扁平 <see cref="ReleaseManifest.FlatArtifacts"/> 合成一份"伪 ModelInfo"
+    /// 以保持调用方 API 一致。
+    /// </summary>
+    public static List<ModelInfo> ListModelsFromManifest(ReleaseManifest manifest)
+    {
+        var result = new List<ModelInfo>();
+        if (manifest == null) return result;
+
+        if (manifest.Models != null && manifest.Models.Count > 0)
+        {
+            result.AddRange(manifest.Models);
+            return result;
+        }
+
+        // 向后兼容：扁平 artifacts → 合成 ModelInfo
+        if (manifest.FlatArtifacts != null && manifest.FlatArtifacts.Count > 0)
+        {
+            var grouped = new Dictionary<string, Dictionary<string, ArtifactInfo>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var art in manifest.FlatArtifacts)
+            {
+                if (string.IsNullOrWhiteSpace(art.Engine) || string.IsNullOrWhiteSpace(art.Precision)) continue;
+                if (!grouped.TryGetValue(art.Engine, out var byEngine))
+                {
+                    byEngine = new Dictionary<string, ArtifactInfo>(StringComparer.OrdinalIgnoreCase);
+                    grouped[art.Engine] = byEngine;
+                }
+                byEngine[art.Precision] = art;
+            }
+            if (grouped.Count > 0)
+            {
+                result.Add(new ModelInfo
+                {
+                    AssetStem = "legacy",
+                    DisplayName = "Legacy single-model manifest",
+                    Backbone = "legacy",
+                    Version = "1.0",
+                    Family = "legacy",
+                    Artifacts = grouped
+                });
+            }
+        }
+
+        return result;
     }
 
-    private sealed class V2Artifact
+    /// <summary>
+    /// 在指定的 <see cref="ModelInfo"/> 中查找 engine=onnx, precision=<paramref name="precision"/>
+    /// 的 artifact。
+    /// </summary>
+    public static ArtifactInfo? FindArtifactInModel(
+        ModelInfo model,
+        string engine,
+        string precision)
     {
-        [JsonPropertyName("engine")]
-        public string Engine { get; set; } = "";
-
-        [JsonPropertyName("backbone")]
-        public string Backbone { get; set; } = "";
-
-        [JsonPropertyName("precision")]
-        public string Precision { get; set; } = "";
-
-        [JsonPropertyName("format")]
-        public string Format { get; set; } = "";
-
-        [JsonPropertyName("files")]
-        public List<V2File>? Files { get; set; }
+        if (model?.Artifacts == null) return null;
+        if (!model.Artifacts.TryGetValue(engine, out var byEngine)) return null;
+        if (byEngine == null) return null;
+        byEngine.TryGetValue(precision, out var art);
+        return art;
     }
 
-    private sealed class V2File
+    /// <summary>
+    /// 解析 manifest → 目标 artifact。
+    /// 1) 优先在 <see cref="ReleaseManifest.Models"/> 中按 <paramref name="assetStem"/> /
+    ///    backbone 找到对应 <see cref="ModelInfo"/>，再从中查找 engine+precision。
+    /// 2) 若 <see cref="ReleaseManifest.Models"/> 为空，回退到 <see cref="ReleaseManifest.FlatArtifacts"/> 列表。
+    /// </summary>
+    private static ArtifactInfo? ResolveArtifact(
+        ReleaseManifest manifest,
+        string backbone,
+        string precision,
+        string? assetStem,
+        Action<string>? log)
     {
-        [JsonPropertyName("path")]
-        public string Path { get; set; } = "";
+        var models = ListModelsFromManifest(manifest);
+        if (models.Count == 0) return null;
 
-        [JsonPropertyName("release_asset_name")]
-        public string ReleaseAssetName { get; set; } = "";
+        // 1) 尝试按 assetStem 匹配（v2 多模型）
+        if (!string.IsNullOrWhiteSpace(assetStem))
+        {
+            var exact = models.FirstOrDefault(m =>
+                string.Equals(m.AssetStem, assetStem, StringComparison.OrdinalIgnoreCase));
+            if (exact != null)
+            {
+                var art = FindArtifactInModel(exact, "onnx", precision);
+                if (art != null) return art;
+            }
+        }
 
-        [JsonPropertyName("sha256")]
-        public string Sha256 { get; set; } = "";
+        // 2) 在所有 models 中按 backbone 匹配
+        var byBackbone = models.FirstOrDefault(m =>
+            string.Equals(m.Backbone, backbone, StringComparison.OrdinalIgnoreCase));
+        if (byBackbone != null)
+        {
+            var art = FindArtifactInModel(byBackbone, "onnx", precision);
+            if (art != null) return art;
+        }
+
+        // 3) 退到第一个 model（兼容历史用法）
+        var first = models[0];
+        var fallback = FindArtifactInModel(first, "onnx", precision);
+        if (fallback != null)
+        {
+            log?.Invoke($"v2 manifest 未精确匹配 backbone={backbone}，回退到首个 model: {first.AssetStem}");
+        }
+        return fallback;
     }
 }
