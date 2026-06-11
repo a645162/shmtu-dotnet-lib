@@ -1,0 +1,155 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:shmtu.captcha.onnx.gui.ViewModels"
+        xmlns:backend="using:shmtu.captcha.onnx.Backend"
+        mc:Ignorable="d"
+        x:Class="shmtu.captcha.onnx.gui.Views.ModelSelectionDialog"
+        x:DataType="vm:ModelSelectionViewModel"
+        Width="620" Height="540" MinWidth="520" MinHeight="400"
+        Title="V2 模型高级设置"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <Design.DataContext>
+        <vm:ModelSelectionViewModel/>
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style Selector="TextBlock.section-label">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.dim-text">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="12">
+        <!-- 状态栏 -->
+        <Border DockPanel.Dock="Bottom" Classes="card" Margin="0,10,0,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left"
+                           Text="{Binding StatusText}"
+                           VerticalAlignment="Center"
+                           Classes="dim-text"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                    <Button Content="取消" Command="{Binding CancelCommand}"
+                            Width="80" HorizontalAlignment="Right"/>
+                    <Button Content="应用" Command="{Binding ApplyCommand}"
+                            Width="80" HorizontalAlignment="Right"
+                            Background="{DynamicResource SystemAccentColorBrush}"
+                            Foreground="{DynamicResource SystemControlForegroundChromeWhiteBrush}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="*">
+
+            <!-- Release Tag 选择 -->
+            <Border Grid.Row="0" Classes="card" Margin="0,0,0,8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Release Tag" Classes="section-label" Margin="0,0,0,6"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <ComboBox Grid.Column="0"
+                                  ItemsSource="{Binding Tags}"
+                                  SelectedItem="{Binding SelectedTag}"
+                                  VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="刷新"
+                                Command="{Binding RefreshTagsCommand}"
+                                Margin="8,0,0,0" Width="60"/>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <!-- Precision 选择 -->
+            <Border Grid.Row="1" Classes="card" Margin="0,0,0,8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="精度 (Precision)" Classes="section-label" Margin="0,0,0,6"/>
+                    <ComboBox ItemsSource="{Binding Precisions}"
+                              SelectedItem="{Binding SelectedPrecision}"
+                              Width="120"/>
+                </DockPanel>
+            </Border>
+
+            <!-- 模型列表 -->
+            <Border Grid.Row="2" Classes="card" Margin="0,0,0,8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="模型列表 (Backbone)" Classes="section-label" Margin="0,0,0,6"/>
+                    <ScrollViewer>
+                        <ListBox ItemsSource="{Binding Models}"
+                                 SelectedItem="{Binding SelectedModel}"
+                                 MaxHeight="200">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="backend:ModelInfo">
+                                    <DockPanel Margin="4">
+                                        <TextBlock DockPanel.Dock="Top"
+                                                   Text="{Binding DisplayName}"
+                                                   FontWeight="SemiBold" FontSize="14"/>
+                                        <TextBlock DockPanel.Dock="Top"
+                                                   Text="{Binding AssetStem}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                        <TextBlock DockPanel.Dock="Top"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}">
+                                            <Run Text="Backbone: "/>
+                                            <Run Text="{Binding Backbone}"/>
+                                        </TextBlock>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- 模型详情 -->
+            <Border Grid.Row="3" Classes="card" Margin="0,0,0,8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="当前模型详情" Classes="section-label" Margin="0,0,0,6"/>
+                    <StackPanel Spacing="4">
+                        <TextBlock>
+                            <Run Text="模型: " FontWeight="SemiBold"/>
+                            <Run Text="{Binding SelectedModelDisplay}"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding SelectedModelMetrics}" Classes="dim-text"/>
+                        <TextBlock>
+                            <Run Text="精度: " FontWeight="SemiBold"/>
+                            <Run Text="{Binding SelectedPrecision}"/>
+                        </TextBlock>
+                        <TextBlock>
+                            <Run Text="Tag: " FontWeight="SemiBold"/>
+                            <Run Text="{Binding SelectedTag}"/>
+                        </TextBlock>
+
+                        <Separator Margin="0,4"/>
+
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right"
+                                    Content="下载此模型"
+                                    Command="{Binding DownloadModelCommand}"
+                                    Background="{DynamicResource SystemAccentColorBrush}"
+                                    Foreground="{DynamicResource SystemControlForegroundChromeWhiteBrush}"/>
+                            <ProgressBar Minimum="0" Maximum="100" Height="6"
+                                         Value="{Binding DownloadProgress}"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,10,0"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding DownloadStatus}"
+                                   Classes="dim-text"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

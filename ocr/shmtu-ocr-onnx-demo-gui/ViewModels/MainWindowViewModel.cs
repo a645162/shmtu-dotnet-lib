@@ -12,6 +12,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using shmtu.captcha.onnx;
+using shmtu.captcha.onnx.Backend;
+using shmtu.captcha.onnx.gui.Views;
 
 namespace shmtu.captcha.onnx.gui.ViewModels;
 
@@ -31,6 +33,12 @@ public sealed class MainWindowViewModel : ObservableObject
     private double _averageMs;
     private ConstValue.ModelVersion _selectedVersion = ConstValue.DefaultVersion;
 
+    // ---- v2-specific model settings ----
+    private string _v2CurrentBackbone;
+    private string _v2CurrentPrecision;
+    private string _v2CurrentTag;
+    private bool _isV2ModelReady;
+
     private Bitmap? _currentPreview;
     private byte[]? _currentBytes;
     private string _currentSource = "";
@@ -42,6 +50,10 @@ public sealed class MainWindowViewModel : ObservableObject
         _modelDirectory = AppContext.BaseDirectory;
         _ocr = new CasOcr(_modelDirectory, version: _selectedVersion);
         _modelsReady = _ocr.CheckModelIsExist();
+        _v2CurrentBackbone = ConstValue.V2.DefaultBackbone;
+        _v2CurrentPrecision = ConstValue.V2.DefaultPrecision;
+        _v2CurrentTag = ConstValue.V2.DefaultTag;
+        _isV2ModelReady = _modelsReady && _selectedVersion == ConstValue.ModelVersion.V2;
         if (_modelsReady)
         {
             _ocr.LoadModel();
@@ -53,6 +65,8 @@ public sealed class MainWindowViewModel : ObservableObject
         }
 
         EnsureModelsCommand = new RelayCommand(async () => await EnsureModelsAsync(), () => !IsBusy);
+        DownloadDefaultV2Command = new RelayCommand(async () => await DownloadDefaultV2Async(), () => !IsBusy);
+        OpenAdvancedSettingsCommand = new RelayCommand(async () => await OpenAdvancedSettingsAsync(), () => !IsBusy);
         DownloadFromCasCommand = new RelayCommand(async () => await DownloadFromCasAsync(), () => !IsBusy);
         OpenLocalCommand = new RelayCommand(async () => await OpenLocalAsync(), () => !IsBusy);
         RecognizeCommand = new RelayCommand(async () => await RecognizeCurrentAsync(),
@@ -164,11 +178,62 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public double AverageMs { get => _averageMs; set => SetField(ref _averageMs, value); }
 
+    // ---- v2 model settings ----
+
+    /// <summary>当前 v2 backbone 名称（如 mobilenet_v3_small）。</summary>
+    public string V2CurrentBackbone
+    {
+        get => _v2CurrentBackbone;
+        set => SetField(ref _v2CurrentBackbone, value);
+    }
+
+    /// <summary>当前 v2 精度（fp16 / fp32）。</summary>
+    public string V2CurrentPrecision
+    {
+        get => _v2CurrentPrecision;
+        set => SetField(ref _v2CurrentPrecision, value);
+    }
+
+    /// <summary>当前 v2 release tag。</summary>
+    public string V2CurrentTag
+    {
+        get => _v2CurrentTag;
+        set => SetField(ref _v2CurrentTag, value);
+    }
+
+    /// <summary>v2 当前模型是否已就绪。</summary>
+    public bool IsV2ModelReady
+    {
+        get => _isV2ModelReady;
+        set
+        {
+            if (SetField(ref _isV2ModelReady, value))
+            {
+                OnPropertyChanged(nameof(V2ModelStatusText));
+                RaiseCommandsChanged();
+            }
+        }
+    }
+
+    /// <summary>v2 当前模型的显示描述。</summary>
+    public string V2ModelDisplayText =>
+        _selectedVersion == ConstValue.ModelVersion.V1
+            ? $"v1 (3 ResNet)"
+            : $"v2 / {_v2CurrentBackbone} / {_v2CurrentPrecision} @ {_v2CurrentTag}";
+
+    public string V2ModelStatusText => IsV2ModelReady ? "V2 模型已就绪" : "V2 模型未就绪";
+
     public RelayCommand EnsureModelsCommand { get; }
     public RelayCommand DownloadFromCasCommand { get; }
     public RelayCommand OpenLocalCommand { get; }
     public RelayCommand RecognizeCommand { get; }
     public RelayCommand ReleaseModelCommand { get; }
+
+    /// <summary>一键下载默认 v2 模型（mobilenet_v3_small + fp16）。</summary>
+    public RelayCommand DownloadDefaultV2Command { get; }
+
+    /// <summary>打开 v2 模型高级设置子窗口。</summary>
+    public RelayCommand OpenAdvancedSettingsCommand { get; }
 
     public RelayCommand AddToBatchCommand { get; }
     public RelayCommand SelectFilesCommand { get; }
@@ -178,6 +243,8 @@ public sealed class MainWindowViewModel : ObservableObject
     private void RaiseCommandsChanged()
     {
         EnsureModelsCommand.RaiseCanExecuteChanged();
+        DownloadDefaultV2Command.RaiseCanExecuteChanged();
+        OpenAdvancedSettingsCommand.RaiseCanExecuteChanged();
         DownloadFromCasCommand.RaiseCanExecuteChanged();
         OpenLocalCommand.RaiseCanExecuteChanged();
         RecognizeCommand.RaiseCanExecuteChanged();
@@ -224,6 +291,80 @@ public sealed class MainWindowViewModel : ObservableObject
         _ocr.Dispose();
         ModelsReady = _ocr.CheckModelIsExist();
         StatusMessage = "已释放模型（如需再次识别请点击「检查 / 下载模型」重新加载）";
+    }
+
+    private async Task DownloadDefaultV2Async()
+    {
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "正在下载默认 v2 模型 (mobilenet_v3_small + fp16)...";
+            DownloadProgress = 0;
+            var progress = new Progress<float>(p =>
+                Dispatcher.UIThread.Post(() => DownloadProgress = p));
+            var logMessages = new List<string>();
+            var ok = await V2Downloader.DownloadAsync(
+                _modelDirectory,
+                null, // auto-resolve tag
+                ConstValue.V2.DefaultBackbone,
+                ConstValue.V2.DefaultPrecision,
+                progress,
+                _http,
+                msg => logMessages.Add(msg),
+                "github",
+                "gitee",
+                ConstValue.V2.DefaultAssetStem);
+
+            ModelsReady = _ocr.CheckModelIsExist();
+            if (ModelsReady)
+            {
+                _ocr.LoadModel();
+                StatusMessage = $"V2 模型已下载并加载，可开始识别";
+            }
+            else
+            {
+                StatusMessage = "V2 模型下载失败，请检查网络后重试";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"V2 下载错误：{ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task OpenAdvancedSettingsAsync()
+    {
+        var dialogVm = new ModelSelectionViewModel();
+        _ = dialogVm.LoadTagsAsync();
+
+        var dialog = new ModelSelectionDialog(dialogVm);
+        var mainWindow = GetMainWindow();
+        if (mainWindow != null)
+        {
+            await dialog.ShowDialog(mainWindow);
+        }
+        else
+        {
+            dialog.Show();
+            return;
+        }
+
+        if (!dialogVm.Applied) return;
+
+        // Apply selections
+        if (dialogVm.AppliedTag != null)
+            V2CurrentTag = dialogVm.AppliedTag;
+        if (dialogVm.AppliedModel != null)
+            V2CurrentBackbone = dialogVm.AppliedModel.Backbone;
+        if (dialogVm.AppliedPrecision != null)
+            V2CurrentPrecision = dialogVm.AppliedPrecision;
+
+        OnPropertyChanged(nameof(V2ModelDisplayText));
+        StatusMessage = $"模型设置已更新: {V2ModelDisplayText}";
     }
 
     private static Window? GetMainWindow() =>
