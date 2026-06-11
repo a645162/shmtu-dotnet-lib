@@ -44,7 +44,7 @@ public static class ConstValue
     /// </summary>
     public static class V2
     {
-        public const string DefaultTag = "v2.0.2";
+        public const string DefaultTag = "v2.0.4";
         public const uint MaxSupportedMajor = 2;
         /// MINOR 上界:
         /// * 0 表示锁 major+minor (v2.0.x)
@@ -52,6 +52,13 @@ public static class ConstValue
         /// * uint.MaxValue 表示不限 minor,只锁 major
         /// 当前版本支持到 v2.0,所以 0
         public const uint MaxSupportedMinor = 0;
+
+        /// <summary>最低支持的主版本号。</summary>
+        public const uint MinSupportedMajor = 2;
+        /// <summary>最低支持的次版本号。</summary>
+        public const uint MinSupportedMinor = 0;
+        /// <summary>最低支持的补丁版本号。v2.0.0~v2.0.3 已删除或存在兼容性问题，最低要求 v2.0.4。</summary>
+        public const uint MinSupportedPatch = 4;
         public const string GithubRepo = "a645162/shmtu-cas-ocr-model";
         public const string GithubReleasesApi = "https://api.github.com/repos/a645162/shmtu-cas-ocr-model/releases";
         public const string DefaultBackbone = "mobilenet_v3_small";

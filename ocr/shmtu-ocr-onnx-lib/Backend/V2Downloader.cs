@@ -6,8 +6,7 @@ namespace shmtu.captcha.onnx.Backend;
 /// <summary>
 /// v2 模型智能下载：
 /// 1) 拉取 {base}/{tag}/model-assets.json
-/// 2) 在 models[*].artifacts（v2 多模型 schema）或顶层 artifacts（v1 扁平回退）中
-///    筛选 engine=onnx, backbone, precision
+/// 2) 在 models[*].artifacts 中筛选 engine=onnx, backbone, precision
 /// 3) 下载每个 release_asset_name 到 destDir
 /// 4) 校验 SHA256；主源失败尝试备用 mirror
 /// </summary>
@@ -99,7 +98,6 @@ public static class V2Downloader
     /// </summary>
     /// <param name="assetStem">
     /// 可选的 asset_stem 过滤器（v2 多模型 manifest）。为 null 时匹配首个匹配 backbone+precision 的模型。
-    /// 旧 manifest（无 models 字段）忽略此参数。
     /// </param>
     public static Task<bool> DownloadAsync(
         string destDir,
@@ -276,50 +274,13 @@ public static class V2Downloader
     // ---- manifest 解析辅助 ----
 
     /// <summary>
-    /// 列出 manifest 中的所有模型。优先返回 v2 多模型 schema 的 models；
-    /// 若 models 为空，则从扁平 <see cref="ReleaseManifest.FlatArtifacts"/> 合成一份"伪 ModelInfo"
-    /// 以保持调用方 API 一致。
+    /// 列出 manifest 中的所有模型。直接返回 <see cref="ReleaseManifest.Models"/>；
+    /// 若为空则返回空列表。
     /// </summary>
     public static List<ModelInfo> ListModelsFromManifest(ReleaseManifest manifest)
     {
-        var result = new List<ModelInfo>();
-        if (manifest == null) return result;
-
-        if (manifest.Models != null && manifest.Models.Count > 0)
-        {
-            result.AddRange(manifest.Models);
-            return result;
-        }
-
-        // 向后兼容：扁平 artifacts → 合成 ModelInfo
-        if (manifest.FlatArtifacts != null && manifest.FlatArtifacts.Count > 0)
-        {
-            var grouped = new Dictionary<string, Dictionary<string, ArtifactInfo>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var art in manifest.FlatArtifacts)
-            {
-                if (string.IsNullOrWhiteSpace(art.Engine) || string.IsNullOrWhiteSpace(art.Precision)) continue;
-                if (!grouped.TryGetValue(art.Engine, out var byEngine))
-                {
-                    byEngine = new Dictionary<string, ArtifactInfo>(StringComparer.OrdinalIgnoreCase);
-                    grouped[art.Engine] = byEngine;
-                }
-                byEngine[art.Precision] = art;
-            }
-            if (grouped.Count > 0)
-            {
-                result.Add(new ModelInfo
-                {
-                    AssetStem = "legacy",
-                    DisplayName = "Legacy single-model manifest",
-                    Backbone = "legacy",
-                    Version = "1.0",
-                    Family = "legacy",
-                    Artifacts = grouped
-                });
-            }
-        }
-
-        return result;
+        if (manifest?.Models == null) return new List<ModelInfo>();
+        return manifest.Models;
     }
 
     /// <summary>
@@ -340,9 +301,8 @@ public static class V2Downloader
 
     /// <summary>
     /// 解析 manifest → 目标 artifact。
-    /// 1) 优先在 <see cref="ReleaseManifest.Models"/> 中按 <paramref name="assetStem"/> /
-    ///    backbone 找到对应 <see cref="ModelInfo"/>，再从中查找 engine+precision。
-    /// 2) 若 <see cref="ReleaseManifest.Models"/> 为空，回退到 <see cref="ReleaseManifest.FlatArtifacts"/> 列表。
+    /// 在 <see cref="ReleaseManifest.Models"/> 中按 <paramref name="assetStem"/> /
+    /// backbone 找到对应 <see cref="ModelInfo"/>，再从中查找 engine+precision。
     /// </summary>
     private static ArtifactInfo? ResolveArtifact(
         ReleaseManifest manifest,

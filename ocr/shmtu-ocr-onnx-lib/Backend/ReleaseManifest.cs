@@ -5,8 +5,7 @@ namespace shmtu.captcha.onnx.Backend;
 
 /// <summary>
 /// model-assets.json 根结构（schema v2）：
-/// 同时支持"按模型分组"（models[*].artifacts[engine][precision]）与
-/// "扁平回退"（FlatArtifacts: List&lt;ArtifactInfo&gt;）两种 schema。
+/// 按模型分组（models[*].artifacts[engine][precision]）的多模型 manifest。
 /// </summary>
 public class ReleaseManifest
 {
@@ -19,16 +18,9 @@ public class ReleaseManifest
     [JsonPropertyName("modellist")]
     public List<string> ModelList { get; set; } = new();
 
-    /// <summary>v2 新增：按模型分组的多模型信息。</summary>
+    /// <summary>按模型分组的多模型信息。</summary>
     [JsonPropertyName("models")]
     public List<ModelInfo> Models { get; set; } = new();
-
-    /// <summary>
-    /// v1 兼容：扁平 artifacts 列表。
-    /// 当 <see cref="Models"/> 为空时，作为回退源继续支持旧的单模型 / 列表式 manifest。
-    /// </summary>
-    [JsonPropertyName("artifacts")]
-    public List<ArtifactInfo> FlatArtifacts { get; set; } = new();
 
     [JsonPropertyName("digests")]
     public List<object>? Digests { get; set; }
