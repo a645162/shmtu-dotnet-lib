@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Lock files (CI uses npm ci / bun install)
+package-lock.json
+bun.lock
+bun.lockb
+
+# VitePress build output
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vibe Coding
+.omc/
+
