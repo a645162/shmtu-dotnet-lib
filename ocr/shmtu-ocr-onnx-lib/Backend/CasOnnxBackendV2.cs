@@ -60,8 +60,8 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
             progress,
             httpClient,
             log,
-            "github",
             "gitee",
+            "github",
             assetStem);
     }
 

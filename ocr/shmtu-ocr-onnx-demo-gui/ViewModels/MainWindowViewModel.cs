@@ -311,8 +311,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 progress,
                 _http,
                 msg => logMessages.Add(msg),
-                "github",
                 "gitee",
+                "github",
                 ConstValue.V2.DefaultAssetStem);
 
             ModelsReady = _ocr.CheckModelIsExist();

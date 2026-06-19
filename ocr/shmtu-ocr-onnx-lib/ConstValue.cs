@@ -61,6 +61,7 @@ public static class ConstValue
         public const uint MinSupportedPatch = 4;
         public const string GithubRepo = "a645162/shmtu-cas-ocr-model";
         public const string GithubReleasesApi = "https://api.github.com/repos/a645162/shmtu-cas-ocr-model/releases";
+        public const string GiteeReleasesApi = "https://gitee.com/api/v5/repos/a645162/shmtu-cas-ocr-model/releases";
         public const string DefaultBackbone = "mobilenet_v3_small";
         public const string DefaultPrecision = "fp16";
         public const string ModelFamily = "trislot_decoder";

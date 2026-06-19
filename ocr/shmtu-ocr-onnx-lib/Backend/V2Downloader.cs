@@ -13,7 +13,8 @@ namespace shmtu.captcha.onnx.Backend;
 public static class V2Downloader
 {
     /// <summary>
-    /// 从 GitHub releases API 自动解析 v{maxMajor}.{≤maxMinor}.x 范围内最新 tag。
+    /// 从 Gitee/GitHub releases API 自动解析 v{maxMajor}.{≤maxMinor}.x 范围内最新 tag。
+    /// 先尝试 Gitee API，失败再尝试 GitHub API。
     /// 任何异常（无网、解析失败、无匹配）均 fallback 到 <paramref name="fallback"/>。
     /// </summary>
     public static async Task<string> ResolveLatestTagAsync(
@@ -28,50 +29,69 @@ public static class V2Downloader
         try
         {
             client.DefaultRequestHeaders.UserAgent.ParseAdd("shmtu-cas-ocr-dotnet/1.0");
-            client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
 
-            var url = $"{ConstValue.V2.GithubReleasesApi}?per_page=100";
-            var json = await client.GetStringAsync(url);
-
-            using var doc = JsonDocument.Parse(json);
-            var candidates = new List<(uint M, uint N, uint P, string Tag)>();
-
-            foreach (var rel in doc.RootElement.EnumerateArray())
+            // 按顺序尝试 Gitee → GitHub
+            var apiSources = new (string Name, string Url, bool NeedsGitHubAccept)[]
             {
-                if (rel.TryGetProperty("draft", out var d) && d.GetBoolean()) continue;
-                if (rel.TryGetProperty("prerelease", out var p) && p.GetBoolean()) continue;
-                if (!rel.TryGetProperty("tag_name", out var t)) continue;
+                ("Gitee", $"{ConstValue.V2.GiteeReleasesApi}?per_page=100", false),
+                ("GitHub", $"{ConstValue.V2.GithubReleasesApi}?per_page=100", true),
+            };
 
-                var tag = t.GetString() ?? "";
-                if (!TryParseSemverTag(tag, out var major, out var minor, out var patch)) continue;
-                if (major != maxMajor) continue;
-                // uint.MaxValue 表示无上界
-                if (maxMinor < uint.MaxValue && minor > maxMinor) continue;
+            foreach (var (sourceName, url, needsGitHubAccept) in apiSources)
+            {
+                try
+                {
+                    // GitHub API 需要 Accept header；Gitee 不需要
+                    if (needsGitHubAccept && !client.DefaultRequestHeaders.Accept.Any(h => h.MediaType == "application/vnd.github+json"))
+                        client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
 
-                candidates.Add((major, minor, patch, tag));
+                    var json = await client.GetStringAsync(url);
+
+                    using var doc = JsonDocument.Parse(json);
+                    var candidates = new List<(uint M, uint N, uint P, string Tag)>();
+
+                    foreach (var rel in doc.RootElement.EnumerateArray())
+                    {
+                        // Gitee 可能没有 draft 字段，用 optBoolean/false 处理
+                        if (rel.TryGetProperty("draft", out var d) && d.ValueKind == JsonValueKind.True) continue;
+                        if (rel.TryGetProperty("prerelease", out var p) && p.GetBoolean()) continue;
+                        if (!rel.TryGetProperty("tag_name", out var t)) continue;
+
+                        var tag = t.GetString() ?? "";
+                        if (!TryParseSemverTag(tag, out var major, out var minor, out var patch)) continue;
+                        if (major != maxMajor) continue;
+                        // uint.MaxValue 表示无上界
+                        if (maxMinor < uint.MaxValue && minor > maxMinor) continue;
+
+                        candidates.Add((major, minor, patch, tag));
+                    }
+
+                    if (candidates.Count == 0)
+                    {
+                        var filter = maxMinor == uint.MaxValue
+                            ? $"v{maxMajor}.x.x"
+                            : $"v{maxMajor}.{maxMinor}.x";
+                        log?.Invoke($"[v2] {sourceName}: no release matched {filter}");
+                        continue; // 尝试下一个 API 源
+                    }
+
+                    var chosen = candidates
+                        .OrderByDescending(c => c.M)
+                        .ThenByDescending(c => c.N)
+                        .ThenByDescending(c => c.P)
+                        .First().Tag;
+
+                    log?.Invoke($"[v2] resolved latest tag: {chosen} ({candidates.Count} candidates, source={sourceName})");
+                    return chosen;
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke($"[v2] {sourceName} API failed ({ex.Message}); trying next source");
+                }
             }
 
-            if (candidates.Count == 0)
-            {
-                var filter = maxMinor == uint.MaxValue
-                    ? $"v{maxMajor}.x.x"
-                    : $"v{maxMajor}.{maxMinor}.x";
-                log?.Invoke($"[v2] no release matched {filter}; fallback to {fallback}");
-                return fallback;
-            }
-
-            var chosen = candidates
-                .OrderByDescending(c => c.M)
-                .ThenByDescending(c => c.N)
-                .ThenByDescending(c => c.P)
-                .First().Tag;
-
-            log?.Invoke($"[v2] resolved latest tag: {chosen} ({candidates.Count} candidates)");
-            return chosen;
-        }
-        catch (Exception ex)
-        {
-            log?.Invoke($"[v2] cannot list releases ({ex.Message}); fallback to {fallback}");
+            // 所有 API 源均未返回匹配结果
+            log?.Invoke($"[v2] all API sources failed; fallback to {fallback}");
             return fallback;
         }
         finally
@@ -107,8 +127,8 @@ public static class V2Downloader
         IProgress<float>? progress = null,
         HttpClient? httpClient = null,
         Action<string>? log = null,
-        string primaryMirror = "github",
-        string fallbackMirror = "gitee",
+        string primaryMirror = "gitee",
+        string fallbackMirror = "github",
         string? assetStem = null)
     {
         return DownloadInternalAsync(destDir, tag, backbone, precision, progress, httpClient, log,
