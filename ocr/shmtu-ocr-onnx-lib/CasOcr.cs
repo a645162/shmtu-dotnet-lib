@@ -17,6 +17,8 @@ public sealed class CasOcr : IDisposable
     private readonly bool _useGpu;
     private readonly int _gpuDeviceId;
     private ConstValue.ModelVersion _version;
+    private string? _backbone;
+    private string? _precision;
 
     /// <summary>
     /// 构造 OCR 客户端。
@@ -25,21 +27,33 @@ public sealed class CasOcr : IDisposable
     /// <param name="useGpu">是否启用 GPU EP（仅 GPU 构建生效）。</param>
     /// <param name="gpuDeviceId">GPU 设备 id。</param>
     /// <param name="version">模型版本，默认 v2。</param>
+    /// <param name="backbone">v2 backbone 名称（如 mobilenet_v3_small）；null 时使用默认值。</param>
+    /// <param name="precision">v2 精度（如 fp16 / fp32）；null 时使用默认值。</param>
     public CasOcr(
         string? modelDirectoryPath = null,
         bool useGpu = false,
         int gpuDeviceId = 0,
-        ConstValue.ModelVersion version = ConstValue.DefaultVersion)
+        ConstValue.ModelVersion version = ConstValue.DefaultVersion,
+        string? backbone = null,
+        string? precision = null)
     {
         _modelDirectoryPath = ResolvePath(modelDirectoryPath);
         _useGpu = useGpu;
         _gpuDeviceId = gpuDeviceId;
         _version = version;
-        _backend = CreateBackend(version);
+        _backbone = backbone;
+        _precision = precision;
+        _backend = CreateBackend(version, backbone, precision);
     }
 
     /// <summary>当前 backend 使用的模型版本。</summary>
     public ConstValue.ModelVersion Version => _version;
+
+    /// <summary>当前 v2 backbone（v1 时为 null）。</summary>
+    public string? Backbone => _backbone;
+
+    /// <summary>当前 v2 precision（v1 时为 null）。</summary>
+    public string? Precision => _precision;
 
     /// <summary>当前 backend 标识（用于日志 / 配置持久化）。</summary>
     public string BackendName => _backend.BackendName;
@@ -58,14 +72,20 @@ public sealed class CasOcr : IDisposable
 
     public bool CheckModelIsExist()
         => _version == ConstValue.ModelVersion.V2
-            ? CasOnnxBackendV2.CheckModelIsExist(ModelDirectoryPath)
+            ? CasOnnxBackendV2.CheckModelIsExist(ModelDirectoryPath,
+                _backbone ?? ConstValue.V2.DefaultBackbone,
+                _precision ?? ConstValue.V2.DefaultPrecision)
             : CasOnnxBackendV1.CheckModelIsExist(ModelDirectoryPath);
 
     public string[] GetMissingModelFiles()
         => _version == ConstValue.ModelVersion.V2
-            ? (CasOnnxBackendV2.CheckModelIsExist(ModelDirectoryPath)
+            ? (CasOnnxBackendV2.CheckModelIsExist(ModelDirectoryPath,
+                  _backbone ?? ConstValue.V2.DefaultBackbone,
+                  _precision ?? ConstValue.V2.DefaultPrecision)
                 ? Array.Empty<string>()
-                : new[] { ConstValue.V2.DefaultModelName })
+                : new[] { ConstValue.V2.BuildModelName(
+                    _backbone ?? ConstValue.V2.DefaultBackbone,
+                    _precision ?? ConstValue.V2.DefaultPrecision) })
             : CasOnnxBackendV1.GetMissingModelFiles(ModelDirectoryPath);
 
     /// <summary>
@@ -84,7 +104,8 @@ public sealed class CasOcr : IDisposable
         }
 
         return _version == ConstValue.ModelVersion.V2
-            ? await CasOnnxBackendV2.DownloadModelAsync(ModelDirectoryPath, null, progress, httpClient, log)
+            ? await CasOnnxBackendV2.DownloadModelAsync(ModelDirectoryPath, null, progress, httpClient, log,
+                backbone: _backbone, precision: _precision)
             : await CasOnnxBackendV1.DownloadModelAsync(ModelDirectoryPath, progress, httpClient, log);
     }
 
@@ -166,11 +187,16 @@ public sealed class CasOcr : IDisposable
     /// <summary>
     /// 切换模型版本并重建 backend。先释放当前模型。
     /// </summary>
-    public void SwitchVersion(ConstValue.ModelVersion newVersion)
+    /// <param name="newVersion">新模型版本。</param>
+    /// <param name="backbone">v2 backbone（null 时保留当前值或使用默认）。</param>
+    /// <param name="precision">v2 precision（null 时保留当前值或使用默认）。</param>
+    public void SwitchVersion(ConstValue.ModelVersion newVersion, string? backbone = null, string? precision = null)
     {
         _backend.Dispose();
         _version = newVersion;
-        _backend = CreateBackend(newVersion);
+        _backbone = backbone;
+        _precision = precision;
+        _backend = CreateBackend(newVersion, backbone, precision);
     }
 
     public (int Result, string Expr, int EqualSymbol, int Operator, int Digit1, int Digit2)
@@ -222,9 +248,12 @@ public sealed class CasOcr : IDisposable
 
     public void Dispose() => _backend.Dispose();
 
-    private static ICasOcrBackend CreateBackend(ConstValue.ModelVersion version) => version switch
+    private static ICasOcrBackend CreateBackend(
+        ConstValue.ModelVersion version,
+        string? backbone = null,
+        string? precision = null) => version switch
     {
-        ConstValue.ModelVersion.V2 => new CasOnnxBackendV2(),
+        ConstValue.ModelVersion.V2 => new CasOnnxBackendV2(backbone, precision),
         _ => new CasOnnxBackendV1()
     };
 

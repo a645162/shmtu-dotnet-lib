@@ -132,50 +132,80 @@
 
                 <!-- 右：操作按钮列 -->
                 <Border Grid.Column="1" Classes="card">
-                    <StackPanel Orientation="Vertical" Spacing="10">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Orientation="Vertical" Spacing="10">
 
-                        <TextBlock Text="获取图片" Classes="section-label"/>
-                        <TextBox Text="{Binding CaptchaUrl}"
-                                 PlaceholderText="验证码 URL"/>
-                        <Button Content="下载验证码"
-                                HorizontalAlignment="Stretch"
-                                FontSize="16"
-                                Command="{Binding DownloadFromCasCommand}"/>
-                        <Button Content="打开本地图片"
-                                HorizontalAlignment="Stretch"
-                                FontSize="16"
-                                Command="{Binding OpenLocalCommand}"/>
+                            <TextBlock Text="获取图片" Classes="section-label"/>
+                            <TextBox Text="{Binding CaptchaUrl}"
+                                     PlaceholderText="验证码 URL"/>
+                            <Button Content="下载验证码"
+                                    HorizontalAlignment="Stretch"
+                                    FontSize="16"
+                                    Command="{Binding DownloadFromCasCommand}"/>
+                            <Button Content="打开本地图片"
+                                    HorizontalAlignment="Stretch"
+                                    FontSize="16"
+                                    Command="{Binding OpenLocalCommand}"/>
 
-                        <Separator Margin="0,6,0,6"/>
+                            <Separator Margin="0,6,0,6"/>
 
-                        <TextBlock Text="识别" Classes="section-label"/>
-                        <Button Content="▶ OCR 识别"
-                                HorizontalAlignment="Stretch"
-                                FontSize="20" FontWeight="Bold"
-                                Padding="0,12"
-                                Background="{DynamicResource SystemAccentColorBrush}"
-                                Foreground="{DynamicResource SystemControlForegroundChromeWhiteBrush}"
-                                Command="{Binding RecognizeCommand}"/>
+                            <TextBlock Text="识别" Classes="section-label"/>
+                            <Button Content="▶ OCR 识别"
+                                    HorizontalAlignment="Stretch"
+                                    FontSize="20" FontWeight="Bold"
+                                    Padding="0,12"
+                                    Background="{DynamicResource SystemAccentColorBrush}"
+                                    Foreground="{DynamicResource SystemControlForegroundChromeWhiteBrush}"
+                                    Command="{Binding RecognizeCommand}"/>
 
-                        <Separator Margin="0,6,0,6"/>
+                            <Separator Margin="0,6,0,6"/>
 
-                        <TextBlock Text="批量" Classes="section-label"/>
-                        <Button Content="加入批量列表"
-                                HorizontalAlignment="Stretch"
-                                Command="{Binding AddToBatchCommand}"/>
+                            <TextBlock Text="本地模型" Classes="section-label"/>
+                            <Button Content="扫描本地模型"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding ScanLocalModelsCommand}"/>
+                            <ListBox ItemsSource="{Binding LocalModels}"
+                                     SelectedItem="{Binding SelectedLocalModel}"
+                                     MaxHeight="180"
+                                     FontSize="11">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="backend:LocalModelEntry">
+                                        <DockPanel Margin="2">
+                                            <TextBlock DockPanel.Dock="Right"
+                                                       Text="{Binding FileSizeDisplay}"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Content="加载选中模型"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding LoadLocalModelCommand}"/>
 
-                        <Separator Margin="0,6,0,6"/>
+                            <Separator Margin="0,6,0,6"/>
 
-                        <Button Content="释放模型"
-                                HorizontalAlignment="Stretch"
-                                Command="{Binding ReleaseModelCommand}"/>
+                            <TextBlock Text="批量" Classes="section-label"/>
+                            <Button Content="加入批量列表"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding AddToBatchCommand}"/>
 
-                        <TextBlock Text="Author: Haomin Kong"
-                                   FontSize="10"
-                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,8,0,0"/>
-                    </StackPanel>
+                            <Separator Margin="0,6,0,6"/>
+
+                            <Button Content="释放模型"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding ReleaseModelCommand}"/>
+
+                            <TextBlock Text="Author: Haomin Kong"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
                 </Border>
             </Grid>
 

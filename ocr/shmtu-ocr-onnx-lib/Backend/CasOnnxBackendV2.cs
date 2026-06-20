@@ -20,28 +20,28 @@ namespace shmtu.captcha.onnx.Backend;
 /// </summary>
 public sealed class CasOnnxBackendV2 : ICasOcrBackend
 {
+    private readonly string _backbone;
+    private readonly string _precision;
     private InferenceSession? _session;
     private bool _isLoaded;
 
-    public string BackendName => "v2";
+    public CasOnnxBackendV2(string? backbone = null, string? precision = null)
+    {
+        _backbone = backbone ?? ConstValue.V2.DefaultBackbone;
+        _precision = precision ?? ConstValue.V2.DefaultPrecision;
+    }
+
+    public string BackendName => $"v2/{_backbone}/{_precision}";
 
     public bool IsLoaded => _isLoaded && _session != null;
-
-    /// <summary>检查默认 backbone+precision 的模型文件是否存在。</summary>
-    public static bool CheckModelIsExist(string destDir)
-        => V2Downloader.CheckModelIsExist(destDir, ConstValue.V2.DefaultBackbone, ConstValue.V2.DefaultPrecision);
 
     /// <summary>检查指定 backbone+precision 的模型文件是否存在。</summary>
     public static bool CheckModelIsExist(string destDir, string backbone, string precision)
         => V2Downloader.CheckModelIsExist(destDir, backbone, precision);
 
-    /// <summary>获取默认模型的本地完整路径（不存在则返回 null）。</summary>
-    public static string? GetModelPath(string destDir)
-    {
-        var name = ConstValue.V2.BuildModelName(ConstValue.V2.DefaultBackbone, ConstValue.V2.DefaultPrecision);
-        var full = Path.Combine(Path.GetFullPath(destDir), name);
-        return File.Exists(full) ? full : null;
-    }
+    /// <summary>检查默认 backbone+precision 的模型文件是否存在。</summary>
+    public static bool CheckModelIsExist(string destDir)
+        => CheckModelIsExist(destDir, ConstValue.V2.DefaultBackbone, ConstValue.V2.DefaultPrecision);
 
     /// <summary>获取指定 backbone+precision 的本地完整路径（不存在则返回 null）。</summary>
     public static string? GetModelPath(string destDir, string backbone, string precision)
@@ -51,8 +51,12 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
         return File.Exists(full) ? full : null;
     }
 
+    /// <summary>获取默认模型的本地完整路径（不存在则返回 null）。</summary>
+    public static string? GetModelPath(string destDir)
+        => GetModelPath(destDir, ConstValue.V2.DefaultBackbone, ConstValue.V2.DefaultPrecision);
+
     /// <summary>
-    /// 下载 v2 默认模型到 destDir（tag=null 时自动解析最新 release）。
+    /// 下载 v2 模型到 destDir（tag=null 时自动解析最新 release）。
     /// 可选 <paramref name="assetStem"/> 用于在 v2 多模型 manifest 中选择特定模型；
     /// 留空则使用默认 backbone 匹配。
     /// </summary>
@@ -62,13 +66,15 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
         IProgress<float>? progress = null,
         HttpClient? httpClient = null,
         Action<string>? log = null,
-        string? assetStem = null)
+        string? assetStem = null,
+        string? backbone = null,
+        string? precision = null)
     {
         return V2Downloader.DownloadAsync(
             destDir,
             tag,
-            ConstValue.V2.DefaultBackbone,
-            ConstValue.V2.DefaultPrecision,
+            backbone ?? ConstValue.V2.DefaultBackbone,
+            precision ?? ConstValue.V2.DefaultPrecision,
             progress,
             httpClient,
             log,
@@ -126,7 +132,7 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
 
     public bool LoadModel(string directoryPath, bool useGpu = false, int gpuDeviceId = 0)
     {
-        var modelPath = GetModelPath(directoryPath);
+        var modelPath = GetModelPath(directoryPath, _backbone, _precision);
         if (modelPath == null) return false;
         return LoadModelFromPath(modelPath, useGpu, gpuDeviceId);
     }

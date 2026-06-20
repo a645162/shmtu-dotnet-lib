@@ -21,7 +21,6 @@ public sealed class MainWindowViewModel : ObservableObject
 {
     private const string DefaultCaptchaUrl = "https://cas.shmtu.edu.cn/cas/captcha";
 
-    private readonly CasOcr _ocr;
     private readonly HttpClient _http = new();
 
     private string _modelDirectory;
@@ -44,6 +43,10 @@ public sealed class MainWindowViewModel : ObservableObject
     private string _currentSource = "";
     private string _resultExpr = "（暂无识别结果）";
     private long _currentElapsedMs;
+
+    // ---- Local model scanning ----
+    private LocalModelEntry? _selectedLocalModel;
+    private CasOcr _ocr;
 
     public MainWindowViewModel()
     {
@@ -81,9 +84,29 @@ public sealed class MainWindowViewModel : ObservableObject
             () => !IsBusy && _modelsReady && Items.Count > 0);
         ClearCommand = new RelayCommand(() => { Items.Clear(); RaiseCommandsChanged(); },
             () => !IsBusy && Items.Count > 0);
+
+        // Local model scanning commands
+        ScanLocalModelsCommand = new RelayCommand(ScanLocalModels, () => !IsBusy);
+        LoadLocalModelCommand = new RelayCommand(LoadLocalModel,
+            () => !IsBusy && SelectedLocalModel != null);
+
+        // Perform initial scan
+        ScanLocalModels();
     }
 
     public ObservableCollection<CaptchaItemViewModel> Items { get; } = new();
+
+    public ObservableCollection<LocalModelEntry> LocalModels { get; } = new();
+
+    public LocalModelEntry? SelectedLocalModel
+    {
+        get => _selectedLocalModel;
+        set
+        {
+            if (SetField(ref _selectedLocalModel, value))
+                RaiseCommandsChanged();
+        }
+    }
 
     public string ModelDirectory
     {
@@ -244,6 +267,12 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand RecognizeAllCommand { get; }
     public RelayCommand ClearCommand { get; }
 
+    /// <summary>扫描本地模型文件。</summary>
+    public RelayCommand ScanLocalModelsCommand { get; }
+
+    /// <summary>加载选中的本地模型。</summary>
+    public RelayCommand LoadLocalModelCommand { get; }
+
     private void RaiseCommandsChanged()
     {
         EnsureModelsCommand.RaiseCanExecuteChanged();
@@ -258,6 +287,83 @@ public sealed class MainWindowViewModel : ObservableObject
         SelectFilesCommand.RaiseCanExecuteChanged();
         RecognizeAllCommand.RaiseCanExecuteChanged();
         ClearCommand.RaiseCanExecuteChanged();
+        ScanLocalModelsCommand.RaiseCanExecuteChanged();
+        LoadLocalModelCommand.RaiseCanExecuteChanged();
+    }
+
+    // ---- Local Model Scanning ----
+
+    /// <summary>
+    /// Scans the ModelDirectory for *.onnx files using LocalModelScanner
+    /// and populates LocalModels collection.
+    /// </summary>
+    public void ScanLocalModels()
+    {
+        LocalModels.Clear();
+        var entries = LocalModelScanner.Scan(_modelDirectory);
+
+        foreach (var entry in entries)
+        {
+            LocalModels.Add(entry);
+        }
+
+        StatusMessage = LocalModels.Count > 0
+            ? $"扫描到 {LocalModels.Count} 个本地模型"
+            : "未找到本地模型文件";
+    }
+
+    /// <summary>
+    /// Loads the selected local model: updates version/backbone/precision, creates a new CasOcr, and loads it.
+    /// </summary>
+    private void LoadLocalModel()
+    {
+        var model = _selectedLocalModel;
+        if (model == null) return;
+
+        IsBusy = true;
+        try
+        {
+            // Dispose old OCR instance
+            _ocr.Dispose();
+
+            // Update version settings
+            SelectedVersion = model.Version;
+
+            if (model.Version == ConstValue.ModelVersion.V2)
+            {
+                V2CurrentBackbone = model.Backbone ?? ConstValue.V2.DefaultBackbone;
+                V2CurrentPrecision = model.Precision ?? ConstValue.V2.DefaultPrecision;
+            }
+
+            OnPropertyChanged(nameof(V2ModelDisplayText));
+
+            // Create new CasOcr with the selected model settings
+            _ocr = new CasOcr(_modelDirectory, version: model.Version,
+                backbone: model.Version == ConstValue.ModelVersion.V2 ? model.Backbone : null,
+                precision: model.Version == ConstValue.ModelVersion.V2 ? model.Precision : null);
+
+            if (_ocr.CheckModelIsExist())
+            {
+                _ocr.LoadModel();
+                ModelsReady = true;
+                IsV2ModelReady = model.Version == ConstValue.ModelVersion.V2;
+                StatusMessage = $"已加载本地模型: {model.DisplayName}";
+            }
+            else
+            {
+                ModelsReady = false;
+                IsV2ModelReady = false;
+                StatusMessage = $"本地模型加载失败: {model.FileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"加载本地模型出错: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task EnsureModelsAsync()
@@ -288,6 +394,7 @@ public sealed class MainWindowViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            ScanLocalModels();
         }
     }
 
@@ -338,6 +445,7 @@ public sealed class MainWindowViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            ScanLocalModels();
         }
     }
 
