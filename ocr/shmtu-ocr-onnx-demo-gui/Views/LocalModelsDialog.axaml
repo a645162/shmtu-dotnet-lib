@@ -1,0 +1,126 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:shmtu.captcha.onnx.gui.ViewModels"
+        xmlns:backend="using:shmtu.captcha.onnx.Backend"
+        mc:Ignorable="d"
+        x:Class="shmtu.captcha.onnx.gui.Views.LocalModelsDialog"
+        x:DataType="vm:LocalModelsViewModel"
+        Width="640" Height="480" MinWidth="520" MinHeight="360"
+        Title="本地模型管理"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <Design.DataContext>
+        <vm:LocalModelsViewModel/>
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style Selector="TextBlock.section-label">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.dim-text">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="12">
+
+        <!-- 底部操作栏 -->
+        <Border DockPanel.Dock="Bottom" Classes="card" Margin="0,10,0,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left"
+                           Text="{Binding StatusText}"
+                           VerticalAlignment="Center"
+                           Classes="dim-text"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                    <Button Content="取消" Command="{Binding CancelCommand}"
+                            Width="80" HorizontalAlignment="Right"/>
+                    <Button Content="加载此模型" Command="{Binding LoadCommand}"
+                            Width="120" HorizontalAlignment="Right"
+                            Background="{DynamicResource SystemAccentColorBrush}"
+                            Foreground="{DynamicResource SystemControlForegroundChromeWhiteBrush}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <DockPanel>
+            <!-- 顶部工具栏 -->
+            <Border DockPanel.Dock="Top" Classes="card" Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="本地 ONNX 模型" Classes="section-label"
+                               VerticalAlignment="Center"/>
+                    <Button Content="扫描目录"
+                            Command="{Binding ScanCommand}"
+                            VerticalAlignment="Center"/>
+                    <ProgressBar IsVisible="{Binding IsScanning}"
+                                 IsIndeterminate="True"
+                                 Width="120" Height="6"
+                                 VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 模型列表 -->
+            <Border Classes="card">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="已发现的模型文件" Classes="section-label" Margin="0,0,0,6"/>
+                    <ScrollViewer>
+                        <ListBox ItemsSource="{Binding Entries}"
+                                 SelectedItem="{Binding SelectedEntry}"
+                                 MaxHeight="300">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="backend:LocalModelEntry">
+                                    <Border Padding="8,6" Margin="0,0,0,4"
+                                            CornerRadius="6"
+                                            Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                            <!-- 版本标签 -->
+                                            <Border Grid.Column="0"
+                                                    CornerRadius="4"
+                                                    Padding="6,2"
+                                                    Margin="0,0,10,0"
+                                                    Background="{DynamicResource SystemAccentColorBrush}">
+                                                <TextBlock Text="{Binding Version}"
+                                                           FontSize="11" FontWeight="Bold"
+                                                           Foreground="{DynamicResource SystemControlForegroundChromeWhiteBrush}"/>
+                                            </Border>
+                                            <!-- 模型信息 -->
+                                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Classes="dim-text">
+                                                    <Run Text="大小: "/>
+                                                    <Run Text="{Binding FileSizeDisplay}"/>
+                                                    <Run Text=" · "/>
+                                                    <Run Text="{Binding FullPath}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <!-- 文件大小 -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding FileSizeDisplay}"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                       Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </DockPanel>
+
+    </DockPanel>
+</Window>

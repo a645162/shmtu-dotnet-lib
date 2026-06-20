@@ -31,10 +31,22 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
     public static bool CheckModelIsExist(string destDir)
         => V2Downloader.CheckModelIsExist(destDir, ConstValue.V2.DefaultBackbone, ConstValue.V2.DefaultPrecision);
 
+    /// <summary>检查指定 backbone+precision 的模型文件是否存在。</summary>
+    public static bool CheckModelIsExist(string destDir, string backbone, string precision)
+        => V2Downloader.CheckModelIsExist(destDir, backbone, precision);
+
     /// <summary>获取默认模型的本地完整路径（不存在则返回 null）。</summary>
     public static string? GetModelPath(string destDir)
     {
         var name = ConstValue.V2.BuildModelName(ConstValue.V2.DefaultBackbone, ConstValue.V2.DefaultPrecision);
+        var full = Path.Combine(Path.GetFullPath(destDir), name);
+        return File.Exists(full) ? full : null;
+    }
+
+    /// <summary>获取指定 backbone+precision 的本地完整路径（不存在则返回 null）。</summary>
+    public static string? GetModelPath(string destDir, string backbone, string precision)
+    {
+        var name = ConstValue.V2.BuildModelName(backbone, precision);
         var full = Path.Combine(Path.GetFullPath(destDir), name);
         return File.Exists(full) ? full : null;
     }
@@ -116,6 +128,21 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
     {
         var modelPath = GetModelPath(directoryPath);
         if (modelPath == null) return false;
+        return LoadModelFromPath(modelPath, useGpu, gpuDeviceId);
+    }
+
+    /// <summary>从指定 backbone+precision 加载模型。</summary>
+    public bool LoadModel(string directoryPath, string backbone, string precision, bool useGpu = false, int gpuDeviceId = 0)
+    {
+        var modelPath = GetModelPath(directoryPath, backbone, precision);
+        if (modelPath == null) return false;
+        return LoadModelFromPath(modelPath, useGpu, gpuDeviceId);
+    }
+
+    /// <summary>从指定文件路径加载模型。</summary>
+    public bool LoadModelFromPath(string modelPath, bool useGpu = false, int gpuDeviceId = 0)
+    {
+        if (!File.Exists(modelPath)) return false;
 
         var options = new SessionOptions();
 
@@ -129,7 +156,6 @@ public sealed class CasOnnxBackendV2 : ICasOcrBackend
         _session = new InferenceSession(modelPath, options);
         _isLoaded = true;
 
-        // 输出 name 实际以 session.OutputMetadata 为准；实施时固化映射并 fallback 到模糊匹配
         LogOutputNames(_session);
 
         return true;

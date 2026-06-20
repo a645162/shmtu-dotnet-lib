@@ -16,7 +16,7 @@ public sealed class CasOcr : IDisposable
     private string _modelDirectoryPath;
     private readonly bool _useGpu;
     private readonly int _gpuDeviceId;
-    private readonly ConstValue.ModelVersion _version;
+    private ConstValue.ModelVersion _version;
 
     /// <summary>
     /// 构造 OCR 客户端。
@@ -100,6 +100,77 @@ public sealed class CasOcr : IDisposable
             Console.WriteLine(e);
             return false;
         }
+    }
+
+    /// <summary>
+    /// 加载 v2 指定 backbone+precision 的模型。
+    /// 仅当 <see cref="Version"/> 为 V2 时有效。
+    /// 先释放当前模型再重新加载。
+    /// </summary>
+    public bool LoadV2Model(string backbone, string precision)
+    {
+        if (_version != ConstValue.ModelVersion.V2) return false;
+        try
+        {
+            _backend.Dispose();
+            var v2Backend = new CasOnnxBackendV2();
+            var ok = v2Backend.LoadModel(ModelDirectoryPath, backbone, precision, _useGpu, _gpuDeviceId);
+            if (ok)
+            {
+                _backend = v2Backend;
+            }
+            else
+            {
+                // restore previous backend reference (already disposed, but avoids null)
+                _backend = v2Backend;
+            }
+            return ok;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 从指定文件路径直接加载 v2 模型。
+    /// 仅当 <see cref="Version"/> 为 V2 时有效。
+    /// 先释放当前模型再重新加载。
+    /// </summary>
+    public bool LoadV2ModelFromPath(string modelPath)
+    {
+        if (_version != ConstValue.ModelVersion.V2) return false;
+        try
+        {
+            _backend.Dispose();
+            var v2Backend = new CasOnnxBackendV2();
+            var ok = v2Backend.LoadModelFromPath(modelPath, _useGpu, _gpuDeviceId);
+            if (ok)
+            {
+                _backend = v2Backend;
+            }
+            else
+            {
+                _backend = v2Backend;
+            }
+            return ok;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 切换模型版本并重建 backend。先释放当前模型。
+    /// </summary>
+    public void SwitchVersion(ConstValue.ModelVersion newVersion)
+    {
+        _backend.Dispose();
+        _version = newVersion;
+        _backend = CreateBackend(newVersion);
     }
 
     public (int Result, string Expr, int EqualSymbol, int Operator, int Digit1, int Digit2)

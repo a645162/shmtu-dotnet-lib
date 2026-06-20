@@ -67,6 +67,7 @@ public sealed class MainWindowViewModel : ObservableObject
         EnsureModelsCommand = new RelayCommand(async () => await EnsureModelsAsync(), () => !IsBusy);
         DownloadDefaultV2Command = new RelayCommand(async () => await DownloadDefaultV2Async(), () => !IsBusy);
         OpenAdvancedSettingsCommand = new RelayCommand(async () => await OpenAdvancedSettingsAsync(), () => !IsBusy);
+        OpenLocalModelsCommand = new RelayCommand(async () => await OpenLocalModelsAsync(), () => !IsBusy);
         DownloadFromCasCommand = new RelayCommand(async () => await DownloadFromCasAsync(), () => !IsBusy);
         OpenLocalCommand = new RelayCommand(async () => await OpenLocalAsync(), () => !IsBusy);
         RecognizeCommand = new RelayCommand(async () => await RecognizeCurrentAsync(),
@@ -235,6 +236,9 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>打开 v2 模型高级设置子窗口。</summary>
     public RelayCommand OpenAdvancedSettingsCommand { get; }
 
+    /// <summary>打开本地模型扫描与管理子窗口。</summary>
+    public RelayCommand OpenLocalModelsCommand { get; }
+
     public RelayCommand AddToBatchCommand { get; }
     public RelayCommand SelectFilesCommand { get; }
     public RelayCommand RecognizeAllCommand { get; }
@@ -245,6 +249,7 @@ public sealed class MainWindowViewModel : ObservableObject
         EnsureModelsCommand.RaiseCanExecuteChanged();
         DownloadDefaultV2Command.RaiseCanExecuteChanged();
         OpenAdvancedSettingsCommand.RaiseCanExecuteChanged();
+        OpenLocalModelsCommand.RaiseCanExecuteChanged();
         DownloadFromCasCommand.RaiseCanExecuteChanged();
         OpenLocalCommand.RaiseCanExecuteChanged();
         RecognizeCommand.RaiseCanExecuteChanged();
@@ -365,6 +370,81 @@ public sealed class MainWindowViewModel : ObservableObject
 
         OnPropertyChanged(nameof(V2ModelDisplayText));
         StatusMessage = $"模型设置已更新: {V2ModelDisplayText}";
+    }
+
+    private async Task OpenLocalModelsAsync()
+    {
+        var dialogVm = new LocalModelsViewModel
+        {
+            ModelDirectory = _modelDirectory
+        };
+        // Auto-scan on open
+        _ = dialogVm.ScanAsync();
+
+        var dialog = new LocalModelsDialog(dialogVm);
+        var mainWindow = GetMainWindow();
+        if (mainWindow != null)
+        {
+            await dialog.ShowDialog(mainWindow);
+        }
+        else
+        {
+            dialog.Show();
+            return;
+        }
+
+        if (!dialogVm.Applied || dialogVm.ChosenEntry == null) return;
+
+        var entry = dialogVm.ChosenEntry;
+
+        try
+        {
+            // Switch version if needed
+            if (entry.Version != _selectedVersion)
+            {
+                _ocr.SwitchVersion(entry.Version);
+                _selectedVersion = entry.Version;
+                OnPropertyChanged(nameof(SelectedVersion));
+            }
+
+            bool loadOk;
+            if (entry.Version == ConstValue.ModelVersion.V1)
+            {
+                // V1: all 3 models must exist, use default LoadModel
+                loadOk = _ocr.LoadModel();
+            }
+            else
+            {
+                // V2: load specific backbone+precision
+                if (entry.Backbone != null && entry.Precision != null)
+                {
+                    V2CurrentBackbone = entry.Backbone;
+                    V2CurrentPrecision = entry.Precision;
+                    loadOk = _ocr.LoadV2Model(entry.Backbone, entry.Precision);
+                }
+                else
+                {
+                    // Fallback: load from file path
+                    loadOk = _ocr.LoadV2ModelFromPath(entry.FullPath);
+                }
+            }
+
+            ModelsReady = loadOk;
+            if (loadOk)
+            {
+                StatusMessage = $"已加载本地模型: {entry.DisplayName}";
+            }
+            else
+            {
+                StatusMessage = $"本地模型加载失败: {entry.DisplayName}";
+            }
+
+            OnPropertyChanged(nameof(V2ModelDisplayText));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"加载本地模型出错: {ex.Message}";
+        }
     }
 
     private static Window? GetMainWindow() =>

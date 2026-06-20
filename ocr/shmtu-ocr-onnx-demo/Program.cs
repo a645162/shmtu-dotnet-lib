@@ -18,6 +18,7 @@ try
     {
         "list-tags" => await HandleListTagsCommand(args[1..]),
         "list-models" => await HandleListModelsCommand(args[1..]),
+        "list-local" => HandleListLocalCommand(args[1..]),
         "download" => await HandleDownloadCommand(args[1..]),
         "recognize" or "image" or "predict" => await HandleRecognizeCommand(args[1..]),
         "help" or "--help" or "-h" => PrintUsageAndReturn(),
@@ -105,6 +106,58 @@ async Task<int> HandleListModelsCommand(string[] args)
         Console.WriteLine($"    version:    {m.Version}");
         Console.WriteLine($"    size(M):    {(m.ModelSizeM.HasValue ? m.ModelSizeM.Value.ToString("F2") : "-")}");
         Console.WriteLine($"    precision:  {precisionList}");
+    }
+
+    return 0;
+}
+
+int HandleListLocalCommand(string[] args)
+{
+    var modelDir = ResolveModelDir(GetOption(args, "--model-dir", null));
+
+    Console.WriteLine($"扫描本地模型目录: {modelDir}");
+    Console.WriteLine();
+
+    var entries = LocalModelScanner.Scan(modelDir);
+
+    if (entries.Count == 0)
+    {
+        Console.WriteLine("未找到任何本地 ONNX 模型文件。");
+        Console.WriteLine("提示: 使用 download 命令下载模型，或通过 --model-dir 指定模型目录。");
+        return 1;
+    }
+
+    var v1Entries = entries.Where(e => e.Version == ConstValue.ModelVersion.V1).ToList();
+    var v2Entries = entries.Where(e => e.Version == ConstValue.ModelVersion.V2).ToList();
+
+    Console.WriteLine($"共发现 {entries.Count} 个本地模型文件 (V1: {v1Entries.Count}, V2: {v2Entries.Count})");
+    Console.WriteLine();
+
+    if (v1Entries.Count > 0)
+    {
+        Console.WriteLine("=== V1 模型 ===");
+        foreach (var e in v1Entries)
+        {
+            Console.WriteLine($"  {e.FileName}");
+            Console.WriteLine($"    大小: {e.FileSizeDisplay}");
+            Console.WriteLine($"    路径: {e.FullPath}");
+        }
+        Console.WriteLine();
+    }
+
+    if (v2Entries.Count > 0)
+    {
+        Console.WriteLine("=== V2 模型 ===");
+        foreach (var e in v2Entries)
+        {
+            Console.WriteLine($"  {e.DisplayName}");
+            Console.WriteLine($"    backbone:  {e.Backbone}");
+            Console.WriteLine($"    precision: {e.Precision}");
+            Console.WriteLine($"    family:    {e.Family}");
+            Console.WriteLine($"    version:   {e.ModelVersion}");
+            Console.WriteLine($"    大小:      {e.FileSizeDisplay}");
+            Console.WriteLine($"    路径:      {e.FullPath}");
+        }
     }
 
     return 0;
@@ -301,12 +354,14 @@ void PrintUsage()
     Console.WriteLine("  shmtu-ocr-onnx-demo recognize <图片路径> [选项]");
     Console.WriteLine("  shmtu-ocr-onnx-demo list-tags [--max-minor N]");
     Console.WriteLine("  shmtu-ocr-onnx-demo list-models [--version v2] [--tag v2.0.5]");
+    Console.WriteLine("  shmtu-ocr-onnx-demo list-local [--model-dir DIR]");
     Console.WriteLine("  shmtu-ocr-onnx-demo download [选项]");
     Console.WriteLine();
     Console.WriteLine("命令:");
     Console.WriteLine("  recognize <path>  识别单张验证码图片（兼容 image / predict 别名）");
     Console.WriteLine("  list-tags         自动解析 v2 最新 release tag");
     Console.WriteLine("  list-models       列出 v2 manifest 中所有可用模型（v2 only）");
+    Console.WriteLine("  list-local        扫描本地模型目录，列出所有已下载的 ONNX 模型");
     Console.WriteLine("  download          仅下载模型,不识别");
     Console.WriteLine();
     Console.WriteLine("选项:");
@@ -322,6 +377,8 @@ void PrintUsage()
     Console.WriteLine("  shmtu-ocr-onnx-demo recognize ./samples/001.png --version v1");
     Console.WriteLine("  shmtu-ocr-onnx-demo list-tags");
     Console.WriteLine("  shmtu-ocr-onnx-demo list-models --tag v2.0.5");
+    Console.WriteLine("  shmtu-ocr-onnx-demo list-local");
+    Console.WriteLine("  shmtu-ocr-onnx-demo list-local --model-dir ./models");
     Console.WriteLine("  shmtu-ocr-onnx-demo download --version v2 --tag v2.0.5 --backbone mobilenet_v3_small --precision fp16");
     Console.WriteLine("  shmtu-ocr-onnx-demo download --version v1 --model-dir ./models");
     Console.WriteLine("  shmtu-ocr-onnx-demo download --version v2 --backbone resnet18 --precision fp32");

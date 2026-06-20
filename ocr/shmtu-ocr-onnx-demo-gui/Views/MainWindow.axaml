@@ -75,6 +75,10 @@
                             Command="{Binding OpenAdvancedSettingsCommand}"
                             VerticalAlignment="Center"
                             ToolTip.Tip="选择 Release Tag / Backbone / Precision"/>
+                    <Button Content="本地模型"
+                            Command="{Binding OpenLocalModelsCommand}"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="扫描本地已下载的 ONNX 模型并选择加载"/>
                 </StackPanel>
 
                 <ProgressBar Minimum="0" Maximum="100" Height="6"
